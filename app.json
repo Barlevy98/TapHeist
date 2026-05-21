@@ -34,7 +34,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "react-native-mmkv"
     ],
     "experiments": {
       "typedRoutes": true
