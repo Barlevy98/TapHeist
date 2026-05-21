@@ -15,6 +15,9 @@ export default function MissionsScreen() {
   const [stats, setStats] = useState({ combo: 0, multiplier: 1, bank: 0 });
   const [claimedMissions, setClaimedMissions] = useState<string[]>([]);
 
+  // סטייט חדש למערכת ההתראות (פידבק קבלת פרס)
+  const [notification, setNotification] = useState({ visible: false, title: '', subtitle: '' });
+
   useEffect(() => { loadMissionsData(); }, []);
 
   const loadMissionsData = async () => {
@@ -43,25 +46,45 @@ export default function MissionsScreen() {
 
   const handleClaim = async (mission: Mission) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
     const newClaimed = [...claimedMissions, mission.id];
     setClaimedMissions(newClaimed);
     await SecureStore.setItemAsync('vault_claimed_missions', JSON.stringify(newClaimed));
+
+    let notifTitle = '';
+    let notifSubtitle = '';
 
     if (mission.rewardType === 'diamond') {
       const newDiamonds = diamonds + mission.rewardValue;
       setDiamonds(newDiamonds);
       await SecureStore.setItemAsync('vault_diamonds', newDiamonds.toString());
+      notifTitle = 'DIAMONDS ACQUIRED';
+      notifSubtitle = `+${mission.rewardValue} 💎 added to your vault`;
+      
     } else if (mission.rewardType === 'cash') {
       const newBank = bank + mission.rewardValue;
       setBank(newBank);
       await SecureStore.setItemAsync('vault_bank', newBank.toString());
+      notifTitle = 'FUNDS TRANSFERRED';
+      notifSubtitle = `+$${mission.rewardValue} added to your bank`;
+      
     } else if (mission.rewardType === 'skin') {
       if (!unlockedSkins.includes(mission.rewardValue)) {
         const newUnlocked = [...unlockedSkins, mission.rewardValue];
         setUnlockedSkins(newUnlocked);
         await SecureStore.setItemAsync('vault_unlocked_skins', JSON.stringify(newUnlocked));
       }
+      notifTitle = 'HARDWARE UNLOCKED';
+      notifSubtitle = `New pointer skin added to shop!`;
     }
+
+    // הפעלת ההתראה
+    setNotification({ visible: true, title: notifTitle, subtitle: notifSubtitle });
+    
+    // העלמת ההתראה אחרי 2.5 שניות
+    setTimeout(() => {
+      setNotification({ visible: false, title: '', subtitle: '' });
+    }, 2500);
   };
 
   const checkProgress = (mission: Mission) => {
@@ -122,6 +145,17 @@ export default function MissionsScreen() {
           <Text style={styles.closeButtonText}>BACK TO MENU</Text>
         </TouchableOpacity>
       </View>
+
+      {/* שכבת ההתראה שקופצת כשאוספים פרס! */}
+      {notification.visible && (
+        <View style={styles.notificationOverlay}>
+          <View style={styles.notificationCard}>
+            <Text style={styles.notificationTitle}>{notification.title}</Text>
+            <Text style={styles.notificationSub}>{notification.subtitle}</Text>
+          </View>
+        </View>
+      )}
+
     </View>
   );
 }
@@ -151,4 +185,10 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 30, width: '100%', alignItems: 'center' },
   closeButton: { backgroundColor: '#FFF', paddingVertical: 15, width: '90%', borderRadius: 30, alignItems: 'center', shadowColor: '#FFF', shadowOpacity: 0.2, shadowRadius: 10 },
   closeButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16, letterSpacing: 1 },
+  
+  // עיצוב למודל ה-Reward
+  notificationOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+  notificationCard: { backgroundColor: '#111', borderWidth: 2, borderColor: '#00FF66', padding: 25, borderRadius: 20, alignItems: 'center', width: '80%', shadowColor: '#00FF66', shadowOpacity: 0.3, shadowRadius: 20 },
+  notificationTitle: { color: '#00FF66', fontSize: 20, fontWeight: '900', letterSpacing: 1, marginBottom: 10, textAlign: 'center' },
+  notificationSub: { color: '#FFF', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
 });
