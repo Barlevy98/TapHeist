@@ -3,6 +3,7 @@
     "name": "Tap Heist",
     "slug": "tap-heist",
     "version": "1.0.0",
+    "scheme": "tapheist",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +17,11 @@
       "bundleIdentifier": "com.tapheist.app",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio",
+          "audio"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -33,6 +38,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "afe6561b-11cb-4b51-b0bb-16b9c8c6c7c8"
+      }
     }
   }
 }
