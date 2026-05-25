@@ -14,7 +14,6 @@ import Svg, { Circle, Polygon, Path, Text as SvgText } from 'react-native-svg';
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect } from 'expo-router';
-// הוספנו את AdEventType לכאן
 import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
 import { SKINS, WORLDS, Skin, World } from '../gamedata';
@@ -106,7 +105,6 @@ export default function GameScreen() {
       }
     );
 
-    // התיקון של ה-CLOSED כאן:
     const unsubscribeClosed = rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
       setAdLoaded(false);
       rewardedAd.load(); 
@@ -417,7 +415,8 @@ export default function GameScreen() {
       if (isNearMiss) showNearMiss();
       cancelAnimation(rotation);
       
-      if (!hasRevivedThisRun && adLoaded) {
+      // הלוגיקה החדשה עם דרישת מינימום לקומבו
+      if (!hasRevivedThisRun && adLoaded && combo >= 10) {
         setGameState('REVIVE_OFFER');
       } else {
         await processGameOver();
@@ -665,7 +664,7 @@ export default function GameScreen() {
           {gameState === 'GAMEOVER' && (
             <View style={styles.gameOverContainer}>
               <Text style={styles.gameOverText}>SYSTEM LOCKED</Text>
-              <Text style={styles.scrappedText}>Scrapped 25% of data: +${consolationPrize.toLocaleString()}</Text>
+              <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${consolationPrize.toLocaleString()}</Text>
               {renderRunStats()}
               <TouchableOpacity onPress={startGame} style={styles.retryButton}>
                 <Text style={styles.retryButtonText}>RETRY</Text>
