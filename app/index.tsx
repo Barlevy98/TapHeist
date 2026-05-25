@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Share, Pressable } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Share, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -14,6 +14,9 @@ import Svg, { Circle, Polygon, Path, Text as SvgText } from 'react-native-svg';
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect } from 'expo-router';
+// הוספנו את AdEventType לכאן
+import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
+
 import { SKINS, WORLDS, Skin, World } from '../gamedata';
 import {
   STORAGE_KEYS,
@@ -36,6 +39,14 @@ const BASE_REWARD = 4;
 const FAIL_REWARD_FRACTION = 0.25;
 const DIAMOND_CHANCE = 0.20;
 const NEAR_MISS_MULTIPLIER = 1.35;
+
+const adUnitId = __DEV__ 
+  ? TestIds.REWARDED 
+  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : TestIds.REWARDED);
+
+const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
+  requestNonPersonalizedAdsOnly: false,
+});
 
 export default function GameScreen() {
   const router = useRouter();
@@ -70,6 +81,10 @@ export default function GameScreen() {
   const [runMaxCombo, setRunMaxCombo] = useState(0);
   const [runDiamondsEarned, setRunDiamondsEarned] = useState(0);
 
+  const [adLoaded, setAdLoaded] = useState(false);
+  const [hasRevivedThisRun, setHasRevivedThisRun] = useState(false);
+  const [pendingRevive, setPendingRevive] = useState(false);
+
   const floatAnim = useSharedValue(0);
   const floatOpacity = useSharedValue(0);
   const [lastRewardEarned, setLastRewardEarned] = useState(0);
@@ -78,6 +93,44 @@ export default function GameScreen() {
   const shakeX = useSharedValue(0);
   const successPulse = useSharedValue(1);
   const nearMissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+      setAdLoaded(true);
+    });
+    
+    const unsubscribeEarned = rewardedAd.addAdEventListener(
+      RewardedAdEventType.EARNED_REWARD,
+      () => {
+        setPendingRevive(true);
+      }
+    );
+
+    // התיקון של ה-CLOSED כאן:
+    const unsubscribeClosed = rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
+      setAdLoaded(false);
+      rewardedAd.load(); 
+    });
+
+    rewardedAd.load();
+
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeEarned();
+      unsubscribeClosed();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pendingRevive) {
+      setGameState('PLAYING');
+      setHasRevivedThisRun(true);
+      setPendingRevive(false);
+      randomizeTarget();
+      const newDuration = Math.max(800, 2000 - combo * 60);
+      startRotation(newDuration, direction);
+    }
+  }, [pendingRevive]);
 
   useFocusEffect(
     useCallback(() => {
@@ -237,6 +290,7 @@ export default function GameScreen() {
     setConsolationPrize(0);
     setRunMaxCombo(0);
     setRunDiamondsEarned(0);
+    setHasRevivedThisRun(false); 
     setGameState('PLAYING');
     randomizeTarget();
     setTimeout(() => startRotation(2000, 1), 0);
@@ -291,6 +345,16 @@ export default function GameScreen() {
     } catch (_) {
       /* user cancelled */
     }
+  };
+
+  const processGameOver = async () => {
+    const calculatedPrize = Math.floor(score * FAIL_REWARD_FRACTION);
+    setConsolationPrize(calculatedPrize);
+    updateAndPersistBank(calculatedPrize);
+    await incrementTotalHeists();
+    setGameState('GAMEOVER');
+    const claimable = await countClaimableMissions();
+    setMissionBadge(claimable);
   };
 
   const handleTap = async () => {
@@ -352,13 +416,12 @@ export default function GameScreen() {
       flashMiss();
       if (isNearMiss) showNearMiss();
       cancelAnimation(rotation);
-      const calculatedPrize = Math.floor(score * FAIL_REWARD_FRACTION);
-      setConsolationPrize(calculatedPrize);
-      updateAndPersistBank(calculatedPrize);
-      await incrementTotalHeists();
-      setGameState('GAMEOVER');
-      const claimable = await countClaimableMissions();
-      setMissionBadge(claimable);
+      
+      if (!hasRevivedThisRun && adLoaded) {
+        setGameState('REVIVE_OFFER');
+      } else {
+        await processGameOver();
+      }
     }
   };
 
@@ -409,7 +472,7 @@ export default function GameScreen() {
             <Text style={styles.diamondText}>💎 {diamonds.toLocaleString()}</Text>
           </View>
 
-          {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER') && (
+          {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
             <View style={styles.scoreContainer}>
               <View>
                 <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>
@@ -557,6 +620,21 @@ export default function GameScreen() {
               </TouchableOpacity>
               <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}>
                 <Text style={styles.riskItText}>RISK IT (x{multiplier * 2})</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {gameState === 'REVIVE_OFFER' && (
+            <View style={styles.gameOverContainer}>
+              <Text style={[styles.gameOverText, { color: '#FFCC00' }]}>SYSTEM COMPROMISED</Text>
+              <Text style={styles.scrappedText}>Inject backdoor to resume hack?</Text>
+              
+              <TouchableOpacity onPress={() => { rewardedAd.show(); }} style={[styles.retryButton, { backgroundColor: '#FFCC00', marginBottom: 12, paddingHorizontal: 30 }]}>
+                <Text style={[styles.retryButtonText, { color: '#000' }]}>WATCH AD TO REVIVE</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={processGameOver} style={styles.secondaryActionButton}>
+                <Text style={styles.secondaryActionText}>GIVE UP (Take 25%)</Text>
               </TouchableOpacity>
             </View>
           )}
