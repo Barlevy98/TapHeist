@@ -15,12 +15,8 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tapheist.app",
-      "buildNumber": "1",
+      "buildNumber": "3",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio",
-          "audio"
-        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -30,7 +26,7 @@
         "backgroundColor": "#050505"
       },
       "package": "com.tapheist.app",
-      "versionCode": 1
+      "versionCode": 3
     },
     "plugins": [
       "expo-router",

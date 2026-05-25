@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { MISSIONS, Mission } from '../gamedata';
+import { updateMaxBank } from '../gameHelpers';
 
 export default function MissionsScreen() {
   const router = useRouter();
@@ -15,10 +17,14 @@ export default function MissionsScreen() {
   const [stats, setStats] = useState({ combo: 0, multiplier: 1, bank: 0 });
   const [claimedMissions, setClaimedMissions] = useState<string[]>([]);
 
-  // סטייט חדש למערכת ההתראות (פידבק קבלת פרס)
   const [notification, setNotification] = useState({ visible: false, title: '', subtitle: '' });
 
-  useEffect(() => { loadMissionsData(); }, []);
+  // שימוש ב-useFocusEffect לרענון הנתונים בכל פעם שחוזרים למסך המשימות
+  useFocusEffect(
+    useCallback(() => {
+      loadMissionsData();
+    }, [])
+  );
 
   const loadMissionsData = async () => {
     try {
@@ -59,14 +65,15 @@ export default function MissionsScreen() {
       setDiamonds(newDiamonds);
       await SecureStore.setItemAsync('vault_diamonds', newDiamonds.toString());
       notifTitle = 'DIAMONDS ACQUIRED';
-      notifSubtitle = `+${mission.rewardValue} 💎 added to your vault`;
+      notifSubtitle = `+${mission.rewardValue.toLocaleString()} 💎 added to your vault`;
       
     } else if (mission.rewardType === 'cash') {
       const newBank = bank + mission.rewardValue;
       setBank(newBank);
       await SecureStore.setItemAsync('vault_bank', newBank.toString());
+      await updateMaxBank(newBank);
       notifTitle = 'FUNDS TRANSFERRED';
-      notifSubtitle = `+$${mission.rewardValue} added to your bank`;
+      notifSubtitle = `+$${mission.rewardValue.toLocaleString()} added to your bank`;
       
     } else if (mission.rewardType === 'skin') {
       if (!unlockedSkins.includes(mission.rewardValue)) {
@@ -78,10 +85,8 @@ export default function MissionsScreen() {
       notifSubtitle = `New pointer skin added to shop!`;
     }
 
-    // הפעלת ההתראה
     setNotification({ visible: true, title: notifTitle, subtitle: notifSubtitle });
     
-    // העלמת ההתראה אחרי 2.5 שניות
     setTimeout(() => {
       setNotification({ visible: false, title: '', subtitle: '' });
     }, 2500);
@@ -96,72 +101,74 @@ export default function MissionsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.bankContainer}>
-          <Text style={styles.bankLabel}>YOUR ASSETS</Text>
-          <Text style={styles.bankText}>${bank}</Text>
-          <Text style={styles.diamondText}>💎 {diamonds}</Text>
-        </View>
-      </View>
-      <Text style={styles.title}>OBJECTIVES</Text>
-      <Text style={styles.subtitle}>Complete hacks to earn rewards</Text>
-      
-      <ScrollView style={{ width: '100%', marginTop: 10 }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 100 }}>
-        {MISSIONS.map((mission) => {
-          const progress = checkProgress(mission);
-          const isClaimed = claimedMissions.includes(mission.id);
-          const canClaim = progress.isCompleted && !isClaimed;
-          
-          return (
-            <View key={mission.id} style={[styles.missionCard, canClaim && styles.missionCardReady]}>
-              <View style={styles.missionInfo}>
-                <Text style={styles.missionTitle}>{mission.title}</Text>
-                <Text style={styles.missionDesc}>{mission.desc}</Text>
-                <Text style={styles.progressText}>Progress: {Math.min(progress.current, progress.target)} / {progress.target}</Text>
-              </View>
-              <View style={styles.rewardSection}>
-                {isClaimed ? (
-                  <Text style={styles.claimedText}>CLAIMED</Text>
-                ) : canClaim ? (
-                  <TouchableOpacity style={styles.claimButton} onPress={() => handleClaim(mission)}>
-                    <Text style={styles.claimButtonText}>CLAIM</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.lockedReward}>
-                    <Text style={styles.rewardLabel}>REWARD</Text>
-                    <Text style={[styles.rewardValue, { color: mission.rewardType === 'diamond' ? '#00FFFF' : '#00FF66' }]}>
-                      {mission.rewardType === 'skin' ? 'SKIN' : mission.rewardType === 'diamond' ? `💎 ${mission.rewardValue}` : `$${mission.rewardValue}`}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
-      <View style={styles.footer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>BACK TO MENU</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* שכבת ההתראה שקופצת כשאוספים פרס! */}
-      {notification.visible && (
-        <View style={styles.notificationOverlay}>
-          <View style={styles.notificationCard}>
-            <Text style={styles.notificationTitle}>{notification.title}</Text>
-            <Text style={styles.notificationSub}>{notification.subtitle}</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.bankContainer}>
+            <Text style={styles.bankLabel}>YOUR ASSETS</Text>
+            <Text style={styles.bankText}>${bank.toLocaleString()}</Text>
+            <Text style={styles.diamondText}>💎 {diamonds.toLocaleString()}</Text>
           </View>
         </View>
-      )}
+        <Text style={styles.title}>OBJECTIVES</Text>
+        <Text style={styles.subtitle}>Complete hacks to earn rewards</Text>
+        
+        <ScrollView style={{ width: '100%', marginTop: 10 }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 100 }}>
+          {MISSIONS.map((mission) => {
+            const progress = checkProgress(mission);
+            const isClaimed = claimedMissions.includes(mission.id);
+            const canClaim = progress.isCompleted && !isClaimed;
+            
+            return (
+              <View key={mission.id} style={[styles.missionCard, canClaim && styles.missionCardReady]}>
+                <View style={styles.missionInfo}>
+                  <Text style={styles.missionTitle}>{mission.title}</Text>
+                  <Text style={styles.missionDesc}>{mission.desc}</Text>
+                  <Text style={styles.progressText}>Progress: {Math.min(progress.current, progress.target).toLocaleString()} / {progress.target.toLocaleString()}</Text>
+                </View>
+                <View style={styles.rewardSection}>
+                  {isClaimed ? (
+                    <Text style={styles.claimedText}>CLAIMED</Text>
+                  ) : canClaim ? (
+                    <TouchableOpacity style={styles.claimButton} onPress={() => handleClaim(mission)}>
+                      <Text style={styles.claimButtonText}>CLAIM</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.lockedReward}>
+                      <Text style={styles.rewardLabel}>REWARD</Text>
+                      <Text style={[styles.rewardValue, { color: mission.rewardType === 'diamond' ? '#00FFFF' : '#00FF66' }]}>
+                        {mission.rewardType === 'skin' ? 'SKIN' : mission.rewardType === 'diamond' ? `💎 ${mission.rewardValue.toLocaleString()}` : `$${mission.rewardValue.toLocaleString()}`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+        <View style={styles.footer}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+            <Text style={styles.closeButtonText}>BACK TO MENU</Text>
+          </TouchableOpacity>
+        </View>
 
-    </View>
+        {notification.visible && (
+          <View style={styles.notificationOverlay}>
+            <View style={styles.notificationCard}>
+              <Text style={styles.notificationTitle}>{notification.title}</Text>
+              <Text style={styles.notificationSub}>{notification.subtitle}</Text>
+            </View>
+          </View>
+        )}
+
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050505', paddingTop: 60 },
+  safeArea: { flex: 1, backgroundColor: '#050505' },
+  container: { flex: 1, paddingTop: 20 },
   header: { paddingHorizontal: 30, marginBottom: 15 },
   bankContainer: { alignItems: 'flex-start' },
   bankLabel: { color: '#666', fontSize: 14, fontWeight: 'bold', letterSpacing: 2 },
@@ -185,8 +192,6 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 30, width: '100%', alignItems: 'center' },
   closeButton: { backgroundColor: '#FFF', paddingVertical: 15, width: '90%', borderRadius: 30, alignItems: 'center', shadowColor: '#FFF', shadowOpacity: 0.2, shadowRadius: 10 },
   closeButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16, letterSpacing: 1 },
-  
-  // עיצוב למודל ה-Reward
   notificationOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   notificationCard: { backgroundColor: '#111', borderWidth: 2, borderColor: '#00FF66', padding: 25, borderRadius: 20, alignItems: 'center', width: '80%', shadowColor: '#00FF66', shadowOpacity: 0.3, shadowRadius: 20 },
   notificationTitle: { color: '#00FF66', fontSize: 20, fontWeight: '900', letterSpacing: 1, marginBottom: 10, textAlign: 'center' },

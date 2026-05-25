@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { SKINS, WORLDS, Skin, World } from '../gamedata';
+import { getNextUnlock } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
 
@@ -21,12 +23,20 @@ export default function ShopScreen() {
   const [unlockedWorlds, setUnlockedWorlds] = useState<string[]>(['darknet']);
   const [equippedWorld, setEquippedWorld] = useState('darknet');
 
-  // סטייט עבור מודל חוסר כסף
   const [errorModal, setErrorModal] = useState({ visible: false, missingAmount: 0, currency: '' });
+  const [unlockCelebration, setUnlockCelebration] = useState<{ visible: boolean; name: string }>({
+    visible: false,
+    name: '',
+  });
 
-  useEffect(() => {
-    loadSavedData();
-  }, []);
+  const nextUnlock = getNextUnlock(bank, diamonds, unlockedSkins, unlockedWorlds);
+
+  // שימוש ב-useFocusEffect לרענון הנתונים בכל פעם שחוזרים לחנות
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedData();
+    }, [])
+  );
 
   const loadSavedData = async () => {
     try {
@@ -92,8 +102,9 @@ export default function ShopScreen() {
           SecureStore.setItemAsync('vault_equipped_world', item.id);
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setUnlockCelebration({ visible: true, name: item.name });
+        setTimeout(() => setUnlockCelebration({ visible: false, name: '' }), 2500);
       } else {
-        // המשתמש מנסה לקנות ואין לו כסף! מציגים את המודל המעוצב
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         const currentFunds = item.currency === 'cash' ? bank : diamonds;
         const missing = item.price - currentFunds;
@@ -103,115 +114,140 @@ export default function ShopScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.bankContainer}>
-          <Text style={styles.bankLabel}>YOUR ASSETS</Text>
-          <Text style={styles.bankText}>${bank}</Text>
-          <Text style={styles.diamondText}>💎 {diamonds}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.shopTitle}>BLACK MARKET</Text>
-
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'skins' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('skins')}
-        >
-          <Text style={[styles.tabText, activeTab === 'skins' && styles.tabTextActive]}>POINTERS</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'worlds' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('worlds')}
-        >
-          <Text style={[styles.tabText, activeTab === 'worlds' && styles.tabTextActive]}>WORLDS</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <ScrollView style={{ width: '100%', marginTop: 10 }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 100 }}>
-        
-        {activeTab === 'skins' && SKINS.map((skin) => {
-          const isUnlocked = unlockedSkins.includes(skin.id);
-          const isEquipped = equippedSkin === skin.id;
-          
-          return (
-            <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.colorPreview, { backgroundColor: skin.color, shadowColor: skin.color, shadowRadius: skin.glow / 2 }]} />
-                <View>
-                  <Text style={styles.itemName}>{skin.name}</Text>
-                  <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
-                </View>
-              </View>
-              <View>
-                {isEquipped ? <Text style={[styles.itemStatus, { color: skin.color }]}>EQUIPPED</Text> : 
-                 isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
-                 <Text style={[styles.itemStatus, { color: skin.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>{skin.currency === 'diamond' ? `💎 ${skin.price}` : `$${skin.price}`}</Text>}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        {activeTab === 'worlds' && WORLDS.map((world) => {
-          const isUnlocked = unlockedWorlds.includes(world.id);
-          const isEquipped = equippedWorld === world.id;
-          
-          return (
-            <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.colorPreview, { backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }]} />
-                <View>
-                  <Text style={styles.itemName}>{world.name}</Text>
-                  <Text style={styles.itemSpecs}>Theme unlock</Text>
-                </View>
-              </View>
-              <View>
-                {isEquipped ? <Text style={[styles.itemStatus, { color: world.textPrimary }]}>EQUIPPED</Text> : 
-                 isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
-                 <Text style={[styles.itemStatus, { color: world.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>{world.currency === 'diamond' ? `💎 ${world.price}` : `$${world.price}`}</Text>}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeShopButton}>
-          <Text style={styles.closeShopText}>BACK TO MENU</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* מודל חוסר תקציב מעוצב */}
-      {errorModal.visible && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>ACCESS DENIED</Text>
-            <Text style={styles.modalText}>Insufficient Funds.</Text>
-            <Text style={styles.modalSubText}>
-              You need {errorModal.currency === 'diamond' ? '💎' : '$'}{errorModal.missingAmount} more to acquire this upgrade.
-            </Text>
-            
-            <TouchableOpacity onPress={() => setErrorModal({ ...errorModal, visible: false })} style={styles.modalButton}>
-              <Text style={styles.modalButtonText}>ACKNOWLEDGE</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.bankContainer}>
+            <Text style={styles.bankLabel}>YOUR ASSETS</Text>
+            <Text style={styles.bankText}>${bank.toLocaleString()}</Text>
+            <Text style={styles.diamondText}>💎 {diamonds.toLocaleString()}</Text>
           </View>
         </View>
-      )}
 
-    </View>
+        <Text style={styles.shopTitle}>BLACK MARKET</Text>
+
+        {nextUnlock && nextUnlock.missing > 0 && (
+          <Text style={styles.nextUnlockHint}>
+            Next: {nextUnlock.name} — need {nextUnlock.currency === 'diamond' ? '💎' : '$'}
+            {nextUnlock.missing.toLocaleString()} more
+          </Text>
+        )}
+
+        <View style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'skins' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('skins')}
+          >
+            <Text style={[styles.tabText, activeTab === 'skins' && styles.tabTextActive]}>POINTERS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'worlds' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('worlds')}
+          >
+            <Text style={[styles.tabText, activeTab === 'worlds' && styles.tabTextActive]}>WORLDS</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <ScrollView style={{ width: '100%', marginTop: 10 }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 100 }}>
+          
+          {activeTab === 'skins' && SKINS.map((skin) => {
+            const isUnlocked = unlockedSkins.includes(skin.id);
+            const isEquipped = equippedSkin === skin.id;
+            
+            return (
+              <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.colorPreview, { backgroundColor: skin.color, shadowColor: skin.color, shadowRadius: skin.glow / 2 }]} />
+                  <View>
+                    <Text style={styles.itemName}>{skin.name}</Text>
+                    <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
+                  </View>
+                </View>
+                <View>
+                  {isEquipped ? <Text style={[styles.itemStatus, { color: skin.color }]}>EQUIPPED</Text> : 
+                   isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
+                   <Text style={[styles.itemStatus, { color: skin.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>{skin.currency === 'diamond' ? `💎 ${skin.price.toLocaleString()}` : `$${skin.price.toLocaleString()}`}</Text>}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {activeTab === 'worlds' && WORLDS.map((world) => {
+            const isUnlocked = unlockedWorlds.includes(world.id);
+            const isEquipped = equippedWorld === world.id;
+            
+            return (
+              <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.colorPreview, { backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }]} />
+                  <View>
+                    <Text style={styles.itemName}>{world.name}</Text>
+                    <Text style={styles.itemSpecs}>Theme unlock</Text>
+                  </View>
+                </View>
+                <View>
+                  {isEquipped ? <Text style={[styles.itemStatus, { color: world.textPrimary }]}>EQUIPPED</Text> : 
+                   isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
+                   <Text style={[styles.itemStatus, { color: world.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>{world.currency === 'diamond' ? `💎 ${world.price.toLocaleString()}` : `$${world.price.toLocaleString()}`}</Text>}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeShopButton}>
+            <Text style={styles.closeShopText}>BACK TO MENU</Text>
+          </TouchableOpacity>
+        </View>
+
+        {unlockCelebration.visible && (
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { borderColor: '#00FF66' }]}>
+              <Text style={[styles.modalTitle, { color: '#00FF66' }]}>UNLOCKED</Text>
+              <Text style={styles.modalText}>{unlockCelebration.name} is now in your arsenal.</Text>
+              <TouchableOpacity
+                onPress={() => setUnlockCelebration({ visible: false, name: '' })}
+                style={[styles.modalButton, { backgroundColor: '#00FF66' }]}
+              >
+                <Text style={[styles.modalButtonText, { color: '#0A0A0A' }]}>EQUIP & HACK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {errorModal.visible && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>ACCESS DENIED</Text>
+              <Text style={styles.modalText}>Insufficient Funds.</Text>
+              <Text style={styles.modalSubText}>
+                You need {errorModal.currency === 'diamond' ? '💎' : '$'}{errorModal.missingAmount.toLocaleString()} more to acquire this upgrade.
+              </Text>
+              
+              <TouchableOpacity onPress={() => setErrorModal({ ...errorModal, visible: false })} style={styles.modalButton}>
+                <Text style={styles.modalButtonText}>ACKNOWLEDGE</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050505', paddingTop: 60 },
+  safeArea: { flex: 1, backgroundColor: '#050505' },
+  container: { flex: 1, paddingTop: 20 },
   header: { paddingHorizontal: 30, marginBottom: 20 },
   bankContainer: { alignItems: 'flex-start' },
   bankLabel: { color: '#666', fontSize: 14, fontWeight: 'bold', letterSpacing: 2 },
   bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900' },
   diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', marginTop: 5 },
-  shopTitle: { fontSize: 32, color: '#FFF', fontWeight: '900', letterSpacing: 2, textAlign: 'center', marginBottom: 15 },
+  shopTitle: { fontSize: 32, color: '#FFF', fontWeight: '900', letterSpacing: 2, textAlign: 'center', marginBottom: 8 },
+  nextUnlockHint: { color: '#FFCC00', fontSize: 12, fontWeight: 'bold', textAlign: 'center', marginBottom: 12, paddingHorizontal: 24 },
   tabContainer: { flexDirection: 'row', justifyContent: 'center', gap: 15, marginBottom: 10 },
   tabButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, borderWidth: 1, borderColor: '#333' },
   tabButtonActive: { backgroundColor: '#FFCC00', borderColor: '#FFCC00' },
@@ -225,8 +261,6 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 30, width: '100%', alignItems: 'center' },
   closeShopButton: { backgroundColor: '#FFF', paddingVertical: 15, width: '90%', borderRadius: 30, alignItems: 'center', shadowColor: '#FFF', shadowOpacity: 0.2, shadowRadius: 10 },
   closeShopText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16, letterSpacing: 1 },
-  
-  // סגנונות למודל
   modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   modalContent: { width: '80%', backgroundColor: '#111', borderWidth: 2, borderColor: '#FF3B30', padding: 25, borderRadius: 20, alignItems: 'center' },
   modalTitle: { fontSize: 24, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10 },
