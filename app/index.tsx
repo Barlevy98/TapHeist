@@ -39,9 +39,8 @@ const FAIL_REWARD_FRACTION = 0.25;
 const DIAMOND_CHANCE = 0.20;
 const NEAR_MISS_MULTIPLIER = 1.35;
 
-const adUnitId = __DEV__ 
-  ? TestIds.REWARDED 
-  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : TestIds.REWARDED);
+// שינוי הגדרה: כרגע אנחנו משתמשים אך ורק בפרסומות טסט לבדיקה ב-TestFlight
+const adUnitId = TestIds.REWARDED;
 
 const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
   requestNonPersonalizedAdsOnly: false,
@@ -415,7 +414,7 @@ export default function GameScreen() {
       if (isNearMiss) showNearMiss();
       cancelAnimation(rotation);
       
-      // הלוגיקה החדשה עם דרישת מינימום לקומבו
+      // כאן הוספנו את התנאי שהפרסומת תופיע רק אם השחקן הגיע לקומבו 10
       if (!hasRevivedThisRun && adLoaded && combo >= 10) {
         setGameState('REVIVE_OFFER');
       } else {
