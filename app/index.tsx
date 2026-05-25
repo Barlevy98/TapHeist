@@ -39,8 +39,10 @@ const FAIL_REWARD_FRACTION = 0.25;
 const DIAMOND_CHANCE = 0.20;
 const NEAR_MISS_MULTIPLIER = 1.35;
 
-// שינוי הגדרה: כרגע אנחנו משתמשים אך ורק בפרסומות טסט לבדיקה ב-TestFlight
-const adUnitId = TestIds.REWARDED;
+// הוחזר למזהה האמיתי לפרודקשן (עם הגנת פיתוח)
+const adUnitId = __DEV__ 
+  ? TestIds.REWARDED 
+  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : TestIds.REWARDED);
 
 const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
   requestNonPersonalizedAdsOnly: false,
@@ -414,7 +416,6 @@ export default function GameScreen() {
       if (isNearMiss) showNearMiss();
       cancelAnimation(rotation);
       
-      // כאן הוספנו את התנאי שהפרסומת תופיע רק אם השחקן הגיע לקומבו 10
       if (!hasRevivedThisRun && adLoaded && combo >= 10) {
         setGameState('REVIVE_OFFER');
       } else {
@@ -775,9 +776,9 @@ const styles = StyleSheet.create({
   riskItButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
   riskItText: { color: '#FF3B30', fontSize: 18, fontWeight: '900' },
   gameOverContainer: { alignItems: 'center', width: '100%' },
-  gameOverText: { fontSize: 30, color: '#FF3B30', fontWeight: '900', letterSpacing: 3 },
-  successText: { fontSize: 30, color: '#00FF66', fontWeight: '900', letterSpacing: 2 },
-  scrappedText: { fontSize: 16, color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold' },
+  gameOverText: { fontSize: 30, color: '#FF3B30', fontWeight: '900', letterSpacing: 3, textAlign: 'center' },
+  successText: { fontSize: 30, color: '#00FF66', fontWeight: '900', letterSpacing: 2, textAlign: 'center' },
+  scrappedText: { fontSize: 16, color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold', textAlign: 'center' },
   runStatsText: { color: '#AAA', fontSize: 13, marginBottom: 16, textAlign: 'center' },
   finalScoreText: { fontSize: 18, marginTop: 5, marginBottom: 8 },
   retryButton: { backgroundColor: '#007AFF', paddingVertical: 15, borderRadius: 30, width: 180, alignItems: 'center' },
