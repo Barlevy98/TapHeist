@@ -16,6 +16,9 @@ import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
+// ייבוא קומפוננטת המחוג הנפרדת שיצרנו
+import { GradientPointer } from '../components/GradientPointer';
+
 import { SKINS, WORLDS, Skin, World } from '../gamedata';
 import {
   STORAGE_KEYS,
@@ -39,7 +42,6 @@ const FAIL_REWARD_FRACTION = 0.25;
 const DIAMOND_CHANCE = 0.20;
 const NEAR_MISS_MULTIPLIER = 1.35;
 
-// הוחזר למזהה האמיתי לפרודקשן (עם הגנת פיתוח)
 const adUnitId = __DEV__ 
   ? TestIds.REWARDED 
   : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : TestIds.REWARDED);
@@ -59,7 +61,7 @@ export default function GameScreen() {
   const [multiplier, setMultiplier] = useState(1);
   const [consolationPrize, setConsolationPrize] = useState(0);
 
-  const [activeSkin, setActiveSkin] = useState<Skin>(SKINS[0]);
+  const [activeSkin, setActiveSkin] = useState<any>(SKINS[0]);
   const [activeWorld, setActiveWorld] = useState<World>(WORLDS[0]);
 
   const [targetAngle, setTargetAngle] = useState(0);
@@ -94,6 +96,15 @@ export default function GameScreen() {
   const successPulse = useSharedValue(1);
   const nearMissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // --- פונקציה חדשה לחישוב מהירות בהתאם לעולם ---
+  const getSpeedDuration = (currentCombo: number) => {
+    const isDiamondWorld = activeWorld.id === 'diamond_world';
+    const baseDuration = isDiamondWorld ? 1000 : 2000; // בעולם יהלומים מתחילים פי 2 יותר מהר
+    const speedStep = isDiamondWorld ? 45 : 60;
+    const minDuration = isDiamondWorld ? 400 : 800;
+    return Math.max(minDuration, baseDuration - currentCombo * speedStep);
+  };
+
   useEffect(() => {
     const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
       setAdLoaded(true);
@@ -126,8 +137,7 @@ export default function GameScreen() {
       setHasRevivedThisRun(true);
       setPendingRevive(false);
       randomizeTarget();
-      const newDuration = Math.max(800, 2000 - combo * 60);
-      startRotation(newDuration, direction);
+      startRotation(getSpeedDuration(combo), direction);
     }
   }, [pendingRevive]);
 
@@ -268,7 +278,9 @@ export default function GameScreen() {
   const randomizeTarget = () => {
     const newAngle = Math.floor(Math.random() * (360 - ZONE_SIZE));
     setTargetAngle(newAngle);
-    const isDiamond = Math.random() < DIAMOND_CHANCE;
+    
+    // אם אנחנו בעולם היהלומים - 100% סיכוי. אחרת - סיכוי רגיל.
+    const isDiamond = activeWorld.id === 'diamond_world' ? true : (Math.random() < DIAMOND_CHANCE);
     setIsDiamondTarget(isDiamond);
 
     if (isDiamond && !hasSeenDiamondTutorial) {
@@ -292,7 +304,7 @@ export default function GameScreen() {
     setHasRevivedThisRun(false); 
     setGameState('PLAYING');
     randomizeTarget();
-    setTimeout(() => startRotation(2000, 1), 0);
+    setTimeout(() => startRotation(getSpeedDuration(0), 1), 0);
   };
 
   const startRotation = (duration: number, dir: number) => {
@@ -331,8 +343,7 @@ export default function GameScreen() {
     setGameState('PLAYING');
     randomizeTarget();
     setTimeout(() => {
-      const newDuration = Math.max(800, 2000 - combo * 60);
-      startRotation(newDuration, direction);
+      startRotation(getSpeedDuration(combo), direction);
     }, 0);
   };
 
@@ -363,7 +374,7 @@ export default function GameScreen() {
     }
     if (gameState === 'TUTORIAL') {
       setGameState('PLAYING');
-      startRotation(2000, 1);
+      startRotation(getSpeedDuration(combo), 1);
       return;
     }
     if (gameState !== 'PLAYING') return;
@@ -408,8 +419,7 @@ export default function GameScreen() {
       }
 
       randomizeTarget();
-      const newDuration = Math.max(800, 2000 - newCombo * 60);
-      startRotation(newDuration, nextDirection);
+      startRotation(getSpeedDuration(newCombo), nextDirection);
     } else {
       await hapticNotification(Haptics.NotificationFeedbackType.Error);
       flashMiss();
@@ -533,7 +543,16 @@ export default function GameScreen() {
 
             <Animated.View pointerEvents="none" style={[styles.hitFlashOverlay, hitFlashStyle]} />
 
+            {/* כאן מתבצע הרינדור של המחוג המשודרג או הרגיל */}
             <Animated.View style={[styles.pointerContainer, pointerAnimatedStyle]}>
+              {activeSkin.shape === 'gradient' && (
+                <GradientPointer
+                   size={CIRCLE_SIZE}
+                   primaryColor={activeSkin.primaryColor}
+                   secondaryColor={activeSkin.secondaryColor}
+                   rotation={0} 
+                />
+              )}
               {activeSkin.shape === 'standard' && (
                 <View
                   style={[

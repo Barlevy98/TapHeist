@@ -1,15 +1,35 @@
 export interface Skin {
-  id: string; name: string; currency: 'cash' | 'diamond'; price: number; color: string; glow: number; width: number;
-  shape: 'standard' | 'spiked' | 'lightning'; 
+  id: string;
+  name: string;
+  currency: 'cash' | 'diamond';
+  price: number;
+  color: string;
+  glow: number;
+  width: number;
+  shape: 'standard' | 'spiked' | 'lightning' | 'gradient';
+  primaryColor?: string; // הוסף עבור ה-gradients
+  secondaryColor?: string; // הוסף עבור ה-gradients
 }
 
 export interface World {
-  id: string; name: string; currency: 'cash' | 'diamond'; price: number; 
-  bg: string; vaultRing: string; textPrimary: string; textSecondary: string;
+  id: string;
+  name: string;
+  currency: 'cash' | 'diamond';
+  price: number;
+  bg: string;
+  vaultRing: string;
+  textPrimary: string;
+  textSecondary: string;
 }
 
 export interface Mission {
-  id: string; title: string; desc: string; type: 'combo' | 'multiplier' | 'bank'; target: number; rewardType: 'diamond' | 'cash' | 'skin'; rewardValue: any;
+  id: string;
+  title: string;
+  desc: string;
+  type: 'combo' | 'multiplier' | 'bank';
+  target: number;
+  rewardType: 'diamond' | 'cash' | 'skin';
+  rewardValue: any;
 }
 
 export const SKINS: Skin[] = [
@@ -25,6 +45,10 @@ export const SKINS: Skin[] = [
   { id: 'obsidian', name: 'OBSIDIAN BLACK', currency: 'cash', price: 15000, color: '#0A0A0A', glow: 15, width: 7, shape: 'standard' }, // סקין שחור עמוק חדש
   { id: 'glitch', name: 'GLITCH CORE', currency: 'cash', price: 25000, color: '#FF0055', glow: 30, width: 7, shape: 'standard' },
   { id: 'hacker_king', name: 'HACKER KING', currency: 'cash', price: 50000, color: '#FF4500', glow: 40, width: 10, shape: 'lightning' },
+
+  // --- GRADIENT SKINS (פרימיום בכסף - גרסה 1.1) ---
+  { id: 'cyber_demon', name: 'CYBER DEMON', currency: 'cash', price: 75000, color: '#FF0000', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF0000', secondaryColor: '#111111' },
+  { id: 'neon_voltage', name: 'NEON VOLTAGE', currency: 'cash', price: 100000, color: '#FFFF00', glow: 25, width: 8, shape: 'gradient', primaryColor: '#FFFF00', secondaryColor: '#0000FF' },
 
   // --- DIAMOND SKINS (מטבע פרימיום) ---
   { id: 'ruby', name: 'BLOOD RUBY', currency: 'diamond', price: 100, color: '#E0115F', glow: 15, width: 6, shape: 'spiked' },
@@ -43,6 +67,8 @@ export const WORLDS: World[] = [
   { id: 'cyber', name: 'CYBERPUNK NEON', currency: 'diamond', price: 750, bg: '#0A001F', vaultRing: '#2A0080', textPrimary: '#00FFFF', textSecondary: '#FF00FF' },
   { id: 'blood', name: 'BLOOD MOON', currency: 'diamond', price: 1500, bg: '#1A0000', vaultRing: '#330000', textPrimary: '#FF3B30', textSecondary: '#800000' },
   { id: 'nebula', name: 'DEEP NEBULA', currency: 'diamond', price: 4000, bg: '#020210', vaultRing: '#0D1B2A', textPrimary: '#E0AA3E', textSecondary: '#415A77' },
+  // --- עולם יהלומים חדש (גרסה 1.1) ---
+  { id: 'diamond_world', name: 'DIAMOND MINE', currency: 'diamond', price: 250, bg: '#050011', vaultRing: '#110022', textPrimary: '#00FFFF', textSecondary: '#660088' },
 ];
 
 export const MISSIONS: Mission[] = [
@@ -79,4 +105,9 @@ export const MISSIONS: Mission[] = [
   // --- משימת סיום סופר-קשה חדשה ---
   { id: 'm_epic_4', title: 'UNTOUCHABLE', desc: 'Reach x32 Multiplier', type: 'multiplier', target: 32, rewardType: 'diamond', rewardValue: 1500 },
   { id: 'm_god_1', title: 'LEGENDARY', desc: 'Reach x64 Multiplier', type: 'multiplier', target: 64, rewardType: 'cash', rewardValue: 50000 },
+
+  // --- משימות חדשות לגרסה 1.1 ---
+  { id: 'm_new_1', title: 'DIAMOND RUSH', desc: 'Reach a Combo of 40', type: 'combo', target: 40, rewardType: 'diamond', rewardValue: 250 },
+  { id: 'm_new_2', title: 'DEEP POCKETS', desc: 'Accumulate $250,000 in Bank', type: 'bank', target: 250000, rewardType: 'cash', rewardValue: 25000 },
+  { id: 'm_new_3', title: 'MASTER GAMBLER', desc: 'Reach x128 Multiplier', type: 'multiplier', target: 128, rewardType: 'diamond', rewardValue: 3000 },
 ];

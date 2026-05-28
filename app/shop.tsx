@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+
 import { SKINS, WORLDS, Skin, World } from '../gamedata';
 import { getNextUnlock } from '../gameHelpers';
 
@@ -31,7 +33,6 @@ export default function ShopScreen() {
 
   const nextUnlock = getNextUnlock(bank, diamonds, unlockedSkins, unlockedWorlds);
 
-  // שימוש ב-useFocusEffect לרענון הנתונים בכל פעם שחוזרים לחנות
   useFocusEffect(
     useCallback(() => {
       loadSavedData();
@@ -157,7 +158,24 @@ export default function ShopScreen() {
             return (
               <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.colorPreview, { backgroundColor: skin.color, shadowColor: skin.color, shadowRadius: skin.glow / 2 }]} />
+                  
+                  {/* תצוגה מקדימה חדשה שתומכת ב-Gradients */}
+                  <View style={[styles.colorPreviewContainer, { shadowColor: skin.color, shadowRadius: skin.glow / 2 }]}>
+                    {skin.shape === 'gradient' && skin.primaryColor && skin.secondaryColor ? (
+                      <Svg width="20" height="20">
+                        <Defs>
+                          <LinearGradient id={`grad-${skin.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                            <Stop offset="0%" stopColor={skin.primaryColor} stopOpacity="1" />
+                            <Stop offset="100%" stopColor={skin.secondaryColor} stopOpacity="1" />
+                          </LinearGradient>
+                        </Defs>
+                        <Circle cx="10" cy="10" r="10" fill={`url(#grad-${skin.id})`} />
+                      </Svg>
+                    ) : (
+                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: skin.color }} />
+                    )}
+                  </View>
+
                   <View>
                     <Text style={styles.itemName}>{skin.name}</Text>
                     <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
@@ -179,7 +197,9 @@ export default function ShopScreen() {
             return (
               <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.colorPreview, { backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }]} />
+                  <View style={[styles.colorPreviewContainer, { shadowColor: world.textPrimary }]}>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }} />
+                  </View>
                   <View>
                     <Text style={styles.itemName}>{world.name}</Text>
                     <Text style={styles.itemSpecs}>Theme unlock</Text>
@@ -254,7 +274,10 @@ const styles = StyleSheet.create({
   tabText: { color: '#666', fontWeight: 'bold' },
   tabTextActive: { color: '#000', fontWeight: '900' },
   shopItem: { width: '90%', backgroundColor: '#111', borderWidth: 1, borderColor: '#222', padding: 18, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  colorPreview: { width: 20, height: 20, borderRadius: 10, marginRight: 15, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
+  
+  // סגנון חדש למעטפת של תצוגת הצבע
+  colorPreviewContainer: { marginRight: 15, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
+  
   itemName: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
   itemSpecs: { color: '#666', fontSize: 11, marginTop: 3 },
   itemStatus: { fontWeight: '900', fontSize: 16 },

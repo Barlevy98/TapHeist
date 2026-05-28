@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tap Heist",
     "slug": "tap-heist",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "scheme": "tapheist",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tapheist.app",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
