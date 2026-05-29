@@ -16,7 +16,6 @@ import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
-// ייבוא קומפוננטת המחוג הנפרדת שיצרנו
 import { GradientPointer } from '../components/GradientPointer';
 
 import { SKINS, WORLDS, Skin, World } from '../gamedata';
@@ -31,6 +30,8 @@ import {
   hapticImpact,
   hapticNotification,
   loadHapticsEnabled,
+  getPowerUpInventory,
+  addPowerUp
 } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
@@ -64,6 +65,14 @@ export default function GameScreen() {
   const [activeSkin, setActiveSkin] = useState<any>(SKINS[0]);
   const [activeWorld, setActiveWorld] = useState<World>(WORLDS[0]);
 
+  const [inventory, setInventory] = useState<Record<string, number>>({ smart_shield: 0, time_freeze: 0, precision_focus: 0 });
+  const [isShieldActive, setIsShieldActive] = useState(false);
+  const [focusTapsLeft, setFocusTapsLeft] = useState(0);
+  const [isFrozen, setIsFrozen] = useState(false);
+  const isFrozenRef = useRef(false);
+
+  const currentZoneSize = focusTapsLeft > 0 ? ZONE_SIZE * 2 : ZONE_SIZE;
+
   const [targetAngle, setTargetAngle] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isDiamondTarget, setIsDiamondTarget] = useState(false);
@@ -74,10 +83,7 @@ export default function GameScreen() {
   const [nearMissText, setNearMissText] = useState<string | null>(null);
   const [missionBadge, setMissionBadge] = useState(0);
   const [dailyModal, setDailyModal] = useState<{ visible: boolean; streak: number; cash: number; diamonds: number }>({
-    visible: false,
-    streak: 0,
-    cash: 0,
-    diamonds: 0,
+    visible: false, streak: 0, cash: 0, diamonds: 0,
   });
 
   const [runMaxCombo, setRunMaxCombo] = useState(0);
@@ -89,6 +95,8 @@ export default function GameScreen() {
 
   const floatAnim = useSharedValue(0);
   const floatOpacity = useSharedValue(0);
+  const targetOpacity = useSharedValue(1); 
+
   const [lastRewardEarned, setLastRewardEarned] = useState(0);
   const rotation = useSharedValue(0);
   const hitFlash = useSharedValue(0);
@@ -96,39 +104,38 @@ export default function GameScreen() {
   const successPulse = useSharedValue(1);
   const nearMissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // --- פונקציה חדשה לחישוב מהירות בהתאם לעולם ---
-  const getSpeedDuration = (currentCombo: number) => {
+  const getSpeedDuration = (currentCombo: number, frozen: boolean = isFrozenRef.current) => {
     const isDiamondWorld = activeWorld.id === 'diamond_world';
-    const baseDuration = isDiamondWorld ? 1000 : 2000; // בעולם יהלומים מתחילים פי 2 יותר מהר
-    const speedStep = isDiamondWorld ? 45 : 60;
-    const minDuration = isDiamondWorld ? 400 : 800;
-    return Math.max(minDuration, baseDuration - currentCombo * speedStep);
+    const isPoHWorld = activeWorld.id === 'poh_vault';
+    
+    let baseDuration = 2000;
+    let speedStep = 60;
+    let minDuration = 800;
+
+    if (isDiamondWorld) {
+      baseDuration = 1000; speedStep = 45; minDuration = 400;
+    } else if (isPoHWorld) {
+      baseDuration = 800; speedStep = 30; minDuration = 250;
+    }
+
+    let finalDuration = Math.max(minDuration, baseDuration - currentCombo * speedStep);
+    
+    if (frozen) {
+      finalDuration *= 2.5; 
+    }
+    return finalDuration;
   };
 
   useEffect(() => {
-    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
-      setAdLoaded(true);
-    });
-    
-    const unsubscribeEarned = rewardedAd.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      () => {
-        setPendingRevive(true);
-      }
-    );
-
+    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => setAdLoaded(true));
+    const unsubscribeEarned = rewardedAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => setPendingRevive(true));
     const unsubscribeClosed = rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
       setAdLoaded(false);
       rewardedAd.load(); 
     });
 
     rewardedAd.load();
-
-    return () => {
-      unsubscribeLoaded();
-      unsubscribeEarned();
-      unsubscribeClosed();
-    };
+    return () => { unsubscribeLoaded(); unsubscribeEarned(); unsubscribeClosed(); };
   }, []);
 
   useEffect(() => {
@@ -170,21 +177,16 @@ export default function GameScreen() {
         if (foundWorld) setActiveWorld(foundWorld);
       }
 
+      const inv = await getPowerUpInventory();
+      setInventory(inv);
       const claimable = await countClaimableMissions();
       setMissionBadge(claimable);
 
       const daily = await getDailyRewardInfo();
       if (daily.canClaim) {
-        setDailyModal({
-          visible: true,
-          streak: daily.streak,
-          cash: daily.cashReward,
-          diamonds: daily.diamondReward,
-        });
+        setDailyModal({ visible: true, streak: daily.streak, cash: daily.cashReward, diamonds: daily.diamondReward });
       }
-    } catch (e) {
-      console.log('Error loading data', e);
-    }
+    } catch (e) { console.log('Error loading data', e); }
   };
 
   const updateAndPersistBank = async (amountToAdd: number) => {
@@ -226,25 +228,19 @@ export default function GameScreen() {
 
   const flashMiss = () => {
     shakeX.value = withSequence(
-      withTiming(-12, { duration: 40 }),
-      withTiming(12, { duration: 40 }),
-      withTiming(-8, { duration: 40 }),
-      withTiming(8, { duration: 40 }),
-      withTiming(0, { duration: 40 })
+      withTiming(-12, { duration: 40 }), withTiming(12, { duration: 40 }),
+      withTiming(-8, { duration: 40 }), withTiming(8, { duration: 40 }), withTiming(0, { duration: 40 })
     );
   };
 
-  const showNearMiss = () => {
-    setNearMissText('CLOSE!');
+  const showNearMiss = (customText = 'CLOSE!') => {
+    setNearMissText(customText);
     if (nearMissTimer.current) clearTimeout(nearMissTimer.current);
-    nearMissTimer.current = setTimeout(() => setNearMissText(null), 700);
+    nearMissTimer.current = setTimeout(() => setNearMissText(null), 1000);
   };
 
   const pulseSuccess = () => {
-    successPulse.value = withSequence(
-      withTiming(1.08, { duration: 200 }),
-      withTiming(1, { duration: 300 })
-    );
+    successPulse.value = withSequence(withTiming(1.08, { duration: 200 }), withTiming(1, { duration: 300 }));
   };
 
   const advanceIntro = async () => {
@@ -265,21 +261,16 @@ export default function GameScreen() {
   const handleClaimDaily = async () => {
     await hapticNotification(Haptics.NotificationFeedbackType.Success);
     const result = await claimDailyReward();
-    if (result.cashReward > 0) {
-      setBank((b) => b + result.cashReward);
-    }
-    if (result.diamondReward > 0) {
-      setDiamonds((d) => d + result.diamondReward);
-    }
+    if (result.cashReward > 0) setBank((b) => b + result.cashReward);
+    if (result.diamondReward > 0) setDiamonds((d) => d + result.diamondReward);
     setDailyModal((m) => ({ ...m, visible: false }));
     loadSavedData();
   };
 
   const randomizeTarget = () => {
-    const newAngle = Math.floor(Math.random() * (360 - ZONE_SIZE));
+    const newAngle = Math.floor(Math.random() * (360 - currentZoneSize));
     setTargetAngle(newAngle);
     
-    // אם אנחנו בעולם היהלומים - 100% סיכוי. אחרת - סיכוי רגיל.
     const isDiamond = activeWorld.id === 'diamond_world' ? true : (Math.random() < DIAMOND_CHANCE);
     setIsDiamondTarget(isDiamond);
 
@@ -287,6 +278,16 @@ export default function GameScreen() {
       setGameState('TUTORIAL');
       SecureStore.setItemAsync(STORAGE_KEYS.diamondTutorial, 'true');
       setHasSeenDiamondTutorial(true);
+    }
+
+    if (activeWorld.id === 'zk_vault') {
+      targetOpacity.value = 1;
+      targetOpacity.value = withSequence(
+        withTiming(1, { duration: 400 }),
+        withTiming(0, { duration: 250 })
+      );
+    } else {
+      targetOpacity.value = 1;
     }
   };
 
@@ -302,6 +303,13 @@ export default function GameScreen() {
     setRunMaxCombo(0);
     setRunDiamondsEarned(0);
     setHasRevivedThisRun(false); 
+    
+    setIsShieldActive(false);
+    setFocusTapsLeft(0);
+    setIsFrozen(false);
+    isFrozenRef.current = false;
+    targetOpacity.value = 1;
+
     setGameState('PLAYING');
     randomizeTarget();
     setTimeout(() => startRotation(getSpeedDuration(0), 1), 0);
@@ -311,9 +319,44 @@ export default function GameScreen() {
     const currentVal = rotation.value;
     rotation.value = withRepeat(
       withTiming(currentVal + 360 * dir, { duration, easing: Easing.linear }),
-      -1,
-      false
+      -1, false
     );
+  };
+
+  const activateShield = async () => {
+    if (inventory.smart_shield > 0 && !isShieldActive && gameState === 'PLAYING') {
+      await hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
+      setInventory(prev => ({ ...prev, smart_shield: prev.smart_shield - 1 }));
+      await addPowerUp('smart_shield', -1);
+      setIsShieldActive(true);
+    }
+  };
+
+  const activateFreeze = async () => {
+    if (inventory.time_freeze > 0 && !isFrozenRef.current && gameState === 'PLAYING') {
+      await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
+      setInventory(prev => ({ ...prev, time_freeze: prev.time_freeze - 1 }));
+      await addPowerUp('time_freeze', -1);
+      
+      setIsFrozen(true);
+      isFrozenRef.current = true;
+      cancelAnimation(rotation);
+      startRotation(getSpeedDuration(combo, true), direction);
+
+      setTimeout(() => {
+        isFrozenRef.current = false;
+        setIsFrozen(false);
+      }, 3000); 
+    }
+  };
+
+  const activateFocus = async () => {
+    if (inventory.precision_focus > 0 && focusTapsLeft === 0 && gameState === 'PLAYING') {
+      await hapticImpact(Haptics.ImpactFeedbackStyle.Light);
+      setInventory(prev => ({ ...prev, precision_focus: prev.precision_focus - 1 }));
+      await addPowerUp('precision_focus', -1);
+      setFocusTapsLeft(5); 
+    }
   };
 
   const enterRiskMode = async () => {
@@ -348,13 +391,7 @@ export default function GameScreen() {
   };
 
   const handleShareResult = async () => {
-    try {
-      await Share.share({
-        message: `I just hacked $${score.toLocaleString()} into my vault on Tap Heist! x${multiplier} multiplier. Can you beat my heist?`,
-      });
-    } catch (_) {
-      /* user cancelled */
-    }
+    try { await Share.share({ message: `I just hacked $${score.toLocaleString()} into my vault on Tap Heist! x${multiplier} multiplier. Can you beat my heist?` }); } catch (_) {}
   };
 
   const processGameOver = async () => {
@@ -362,33 +399,29 @@ export default function GameScreen() {
     setConsolationPrize(calculatedPrize);
     updateAndPersistBank(calculatedPrize);
     await incrementTotalHeists();
+    targetOpacity.value = 1; 
     setGameState('GAMEOVER');
     const claimable = await countClaimableMissions();
     setMissionBadge(claimable);
   };
 
   const handleTap = async () => {
-    if (gameState === 'START' || gameState === 'CASHED_OUT') {
-      await startGame();
-      return;
-    }
-    if (gameState === 'TUTORIAL') {
-      setGameState('PLAYING');
-      startRotation(getSpeedDuration(combo), 1);
-      return;
-    }
+    if (gameState === 'START' || gameState === 'CASHED_OUT') { await startGame(); return; }
+    if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
     if (gameState !== 'PLAYING') return;
 
     const currentRawAngle = rotation.value;
     const normalizedCurrentAngle = ((currentRawAngle % 360) + 360) % 360;
-    const targetCenter = targetAngle + ZONE_SIZE / 2;
+    const targetCenter = targetAngle + currentZoneSize / 2;
     let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
     if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
-    const isHit = angleDiff <= ZONE_SIZE / 2;
-    const isNearMiss = !isHit && angleDiff <= (ZONE_SIZE / 2) * NEAR_MISS_MULTIPLIER;
+    const isHit = angleDiff <= currentZoneSize / 2;
+    const isNearMiss = !isHit && angleDiff <= (currentZoneSize / 2) * NEAR_MISS_MULTIPLIER;
 
     if (isHit) {
+      if (focusTapsLeft > 0) setFocusTapsLeft(prev => prev - 1); 
+
       const newCombo = combo + 1;
       setCombo(newCombo);
       setRunMaxCombo((c) => Math.max(c, newCombo));
@@ -402,7 +435,8 @@ export default function GameScreen() {
         playScoreAnimation(1);
       } else {
         await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
-        const reward = BASE_REWARD * multiplier;
+        const worldMultiplier = activeWorld.id === 'poh_vault' ? 5 : 1;
+        const reward = BASE_REWARD * multiplier * worldMultiplier;
         setScore((s) => s + reward);
         playScoreAnimation(reward);
       }
@@ -413,18 +447,31 @@ export default function GameScreen() {
         setDirection(nextDirection);
       }
 
-      if (newCombo % 10 === 0) {
-        await enterRiskMode();
-        return;
+      // --- ביטול ה-Risk Mode בעולם היהלומים! ---
+      if (newCombo % 10 === 0 && activeWorld.id !== 'diamond_world') { 
+        await enterRiskMode(); 
+        return; 
       }
 
       randomizeTarget();
       startRotation(getSpeedDuration(newCombo), nextDirection);
     } else {
       await hapticNotification(Haptics.NotificationFeedbackType.Error);
+      cancelAnimation(rotation);
+
+      if (isShieldActive) {
+        setIsShieldActive(false);
+        flashMiss();
+        showNearMiss('🛡️ SHIELD BROKEN!');
+        const nextDirection = direction === 1 ? -1 : 1;
+        setDirection(nextDirection);
+        randomizeTarget();
+        startRotation(getSpeedDuration(combo), nextDirection);
+        return;
+      }
+
       flashMiss();
       if (isNearMiss) showNearMiss();
-      cancelAnimation(rotation);
       
       if (!hasRevivedThisRun && adLoaded && combo >= 10) {
         setGameState('REVIVE_OFFER');
@@ -434,41 +481,24 @@ export default function GameScreen() {
     }
   };
 
-  const pointerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-
+  const pointerAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));
   const floatingScoreStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: floatAnim.value }],
-    opacity: floatOpacity.value,
-    position: 'absolute',
-    right: 0,
-    top: -30,
+    transform: [{ translateY: floatAnim.value }], opacity: floatOpacity.value, position: 'absolute', right: 0, top: -30,
   }));
-
-  const hitFlashStyle = useAnimatedStyle(() => ({
-    opacity: hitFlash.value,
-  }));
-
-  const shakeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shakeX.value }],
-  }));
-
-  const successPulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: successPulse.value }],
-  }));
+  const hitFlashStyle = useAnimatedStyle(() => ({ opacity: hitFlash.value }));
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+  const successPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: successPulse.value }] }));
+  const targetOpacityStyle = useAnimatedStyle(() => ({ opacity: targetOpacity.value }));
 
   const radius = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = `${(ZONE_SIZE / 360) * circumference} ${circumference}`;
+  const strokeDasharray = `${(currentZoneSize / 360) * circumference} ${circumference}`;
   const strokeDashoffset = -(targetAngle / 360) * circumference;
   const isDirectionWarning = gameState === 'PLAYING' && combo > 0 && (combo + 1) % 5 === 0;
   const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL';
 
   const renderRunStats = () => (
-    <Text style={styles.runStatsText}>
-      Run: {runMaxCombo} combo · x{multiplier} peak · 💎 {runDiamondsEarned} this heist
-    </Text>
+    <Text style={styles.runStatsText}>Run: {runMaxCombo} combo · x{multiplier} peak · 💎 {runDiamondsEarned} this heist</Text>
   );
 
   return (
@@ -484,14 +514,9 @@ export default function GameScreen() {
           {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
             <View style={styles.scoreContainer}>
               <View>
-                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>
-                  ${score.toLocaleString()}
-                </Text>
-                <Animated.Text
-                  style={[styles.floatingScoreText, floatingScoreStyle, { color: isDiamondTarget ? '#00FFFF' : '#00FF66' }]}
-                >
-                  +{lastRewardEarned}
-                  {isDiamondTarget ? '💎' : '$'}
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>${score.toLocaleString()}</Text>
+                <Animated.Text style={[styles.floatingScoreText, floatingScoreStyle, { color: isDiamondTarget ? '#00FFFF' : '#00FF66' }]}>
+                  +{lastRewardEarned}{isDiamondTarget ? '💎' : '$'}
                 </Animated.Text>
               </View>
               {multiplier > 1 && <Text style={styles.multiplierText}>x{multiplier} MULTIPLIER</Text>}
@@ -501,65 +526,43 @@ export default function GameScreen() {
 
         {gameState === 'PLAYING' && combo > 0 && (
           <View style={styles.comboHeader}>
-            <Text style={[styles.comboText, { color: activeSkin.color }]}>{combo} COMBO</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {isShieldActive && <Text style={{ fontSize: 24 }}>🛡️</Text>}
+              <Text style={[styles.comboText, { color: activeSkin.color }]}>{combo} COMBO</Text>
+            </View>
             {isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
             {nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
           </View>
         )}
 
-        <Pressable
-          style={styles.touchArea}
-          onPress={canTapVault ? handleTap : undefined}
-          disabled={!canTapVault}
-        >
+        <Pressable style={styles.touchArea} onPress={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
           <View style={styles.vaultContainer}>
+            
             <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.svg}>
               <Circle cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={activeWorld.vaultRing} strokeWidth={STROKE_WIDTH} fill="none" />
-              <Circle
-                cx={CIRCLE_SIZE / 2}
-                cy={CIRCLE_SIZE / 2}
-                r={radius}
-                stroke={isDiamondTarget ? '#00FFFF' : '#00FF66'}
-                strokeWidth={STROKE_WIDTH}
-                fill="none"
-                strokeDasharray={strokeDasharray}
-                strokeDashoffset={strokeDashoffset}
-                origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`}
-                rotation="-90"
-              />
-              {isDiamondTarget && gameState === 'PLAYING' && (
-                <SvgText
-                  x={CIRCLE_SIZE / 2}
-                  y={CIRCLE_SIZE / 2 - radius + 8}
-                  fill="#00FFFF"
-                  fontSize="22"
-                  fontWeight="bold"
-                  textAnchor="middle"
-                >
-                  💎
-                </SvgText>
-              )}
             </Svg>
+
+            <Animated.View style={[styles.svg, targetOpacityStyle]} pointerEvents="none">
+              <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
+                <Circle
+                  cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={isDiamondTarget ? '#00FFFF' : '#00FF66'}
+                  strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
+                  origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
+                />
+                {isDiamondTarget && gameState === 'PLAYING' && (
+                  <SvgText x={CIRCLE_SIZE / 2} y={CIRCLE_SIZE / 2 - radius + 8} fill="#00FFFF" fontSize="22" fontWeight="bold" textAnchor="middle">💎</SvgText>
+                )}
+              </Svg>
+            </Animated.View>
 
             <Animated.View pointerEvents="none" style={[styles.hitFlashOverlay, hitFlashStyle]} />
 
-            {/* כאן מתבצע הרינדור של המחוג המשודרג או הרגיל */}
             <Animated.View style={[styles.pointerContainer, pointerAnimatedStyle]}>
               {activeSkin.shape === 'gradient' && (
-                <GradientPointer
-                   size={CIRCLE_SIZE}
-                   primaryColor={activeSkin.primaryColor}
-                   secondaryColor={activeSkin.secondaryColor}
-                   rotation={0} 
-                />
+                <GradientPointer size={CIRCLE_SIZE} primaryColor={activeSkin.primaryColor} secondaryColor={activeSkin.secondaryColor} rotation={0} />
               )}
               {activeSkin.shape === 'standard' && (
-                <View
-                  style={[
-                    styles.pointer,
-                    { backgroundColor: activeSkin.color, shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, width: activeSkin.width },
-                  ]}
-                />
+                <View style={[styles.pointer, { backgroundColor: activeSkin.color, shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, width: activeSkin.width }]} />
               )}
               {activeSkin.shape === 'spiked' && (
                 <Svg width={activeSkin.width * 4} height={CIRCLE_SIZE / 2} style={{ shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
@@ -568,45 +571,62 @@ export default function GameScreen() {
               )}
               {activeSkin.shape === 'lightning' && (
                 <Svg width={activeSkin.width * 6} height={CIRCLE_SIZE / 2} style={{ shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
-                  <Path
-                    d={`M${activeSkin.width * 3},0 L0,${CIRCLE_SIZE / 3} L${activeSkin.width * 4},${CIRCLE_SIZE / 2.5} L${activeSkin.width},${CIRCLE_SIZE / 2} L${activeSkin.width * 6},${CIRCLE_SIZE / 1.5} L${activeSkin.width * 3},${CIRCLE_SIZE / 2}`}
-                    stroke={activeSkin.color}
-                    strokeWidth={activeSkin.width / 2}
-                    fill="none"
-                  />
+                  <Path d={`M${activeSkin.width * 3},0 L0,${CIRCLE_SIZE / 3} L${activeSkin.width * 4},${CIRCLE_SIZE / 2.5} L${activeSkin.width},${CIRCLE_SIZE / 2} L${activeSkin.width * 6},${CIRCLE_SIZE / 1.5} L${activeSkin.width * 3},${CIRCLE_SIZE / 2}`} stroke={activeSkin.color} strokeWidth={activeSkin.width / 2} fill="none" />
                 </Svg>
               )}
+              
+              {/* --- סקינים חדשים שלב 4 --- */}
+              {activeSkin.shape === 'binary' && (
+                <View style={{ alignItems: 'center', justifyContent: 'space-between', height: CIRCLE_SIZE / 2, paddingVertical: 10, shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
+                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>0</Text>
+                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>1</Text>
+                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>1</Text>
+                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>0</Text>
+                </View>
+              )}
+              
+              {activeSkin.shape === 'chain' && (
+                <View style={{ alignItems: 'center', justifyContent: 'space-between', height: CIRCLE_SIZE / 2, paddingVertical: 10, shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
+                  <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 4, borderColor: activeSkin.color }} />
+                  <View style={{ width: 4, height: 12, backgroundColor: activeSkin.color }} />
+                  <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 4, borderColor: activeSkin.color }} />
+                  <View style={{ width: 4, height: 12, backgroundColor: activeSkin.color }} />
+                  <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 4, borderColor: activeSkin.color }} />
+                </View>
+              )}
+              {/* --------------------------- */}
+              
             </Animated.View>
           </View>
         </Pressable>
+
+        {gameState === 'PLAYING' && (
+          <View style={styles.powerUpContainer}>
+            <TouchableOpacity style={[styles.powerBtn, (inventory.smart_shield === 0 || isShieldActive) && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
+              <Text style={styles.powerIcon}>🛡️</Text>
+              <Text style={styles.powerCount}>{inventory.smart_shield}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.powerBtn, (inventory.time_freeze === 0 || isFrozen) && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
+              <Text style={styles.powerIcon}>❄️</Text>
+              <Text style={styles.powerCount}>{inventory.time_freeze}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.powerBtn, (inventory.precision_focus === 0 || focusTapsLeft > 0) && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
+              <Text style={styles.powerIcon}>🎯</Text>
+              <Text style={styles.powerCount}>{inventory.precision_focus}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.uiContainer} pointerEvents="box-none">
           {gameState === 'START' && (
             <View style={{ alignItems: 'center' }}>
               <Text style={[styles.actionText, { color: activeWorld.textPrimary }]}>TAP TO HACK</Text>
               <Text style={styles.hookText}>One tap to crack the vault. Cash out or lose it all.</Text>
-
               <View style={styles.menuRow}>
-                <TouchableOpacity onPress={() => router.push('/shop')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
-                  <Text style={styles.menuButtonText}>SHOP</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/missions')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
-                  <Text style={styles.menuButtonText}>MISSIONS</Text>
-                  {missionBadge > 0 && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{missionBadge}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => router.push('/stats' as Parameters<typeof router.push>[0])}
-                  style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}
-                >
-                  <Text style={styles.menuButtonText}>STATS</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/settings')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
-                  <Text style={styles.menuButtonText}>SETTINGS</Text>
-                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/shop')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}><Text style={styles.menuButtonText}>SHOP</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/missions')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}><Text style={styles.menuButtonText}>MISSIONS</Text>{missionBadge > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{missionBadge}</Text></View>}</TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/stats' as Parameters<typeof router.push>[0])} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}><Text style={styles.menuButtonText}>STATS</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/settings')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}><Text style={styles.menuButtonText}>SETTINGS</Text></TouchableOpacity>
               </View>
             </View>
           )}
@@ -625,20 +645,12 @@ export default function GameScreen() {
               <Text style={styles.riskSubtitle}>System Paused</Text>
               {showRiskTutorial && (
                 <View style={styles.riskTutorialBox}>
-                  <Text style={styles.riskTutorialText}>
-                    CASH OUT = keep run earnings. RISK IT = double multiplier but one miss ends the run.
-                  </Text>
-                  <TouchableOpacity onPress={dismissRiskTutorial} style={styles.riskTutorialBtn}>
-                    <Text style={styles.riskTutorialBtnText}>GOT IT</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.riskTutorialText}>CASH OUT = keep run earnings. RISK IT = double multiplier but one miss ends the run.</Text>
+                  <TouchableOpacity onPress={dismissRiskTutorial} style={styles.riskTutorialBtn}><Text style={styles.riskTutorialBtnText}>GOT IT</Text></TouchableOpacity>
                 </View>
               )}
-              <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}>
-                <Text style={styles.cashOutText}>CASH OUT (${score.toLocaleString()})</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}>
-                <Text style={styles.riskItText}>RISK IT (x{multiplier * 2})</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}><Text style={styles.cashOutText}>CASH OUT (${score.toLocaleString()})</Text></TouchableOpacity>
+              <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}><Text style={styles.riskItText}>RISK IT (x{multiplier * 2})</Text></TouchableOpacity>
             </View>
           )}
 
@@ -646,14 +658,8 @@ export default function GameScreen() {
             <View style={styles.gameOverContainer}>
               <Text style={[styles.gameOverText, { color: '#FFCC00' }]}>SYSTEM COMPROMISED</Text>
               <Text style={styles.scrappedText}>Inject backdoor to resume hack?</Text>
-              
-              <TouchableOpacity onPress={() => { rewardedAd.show(); }} style={[styles.retryButton, { backgroundColor: '#FFCC00', marginBottom: 12, paddingHorizontal: 30 }]}>
-                <Text style={[styles.retryButtonText, { color: '#000' }]}>WATCH AD TO REVIVE</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity onPress={processGameOver} style={styles.secondaryActionButton}>
-                <Text style={styles.secondaryActionText}>GIVE UP (Take 25%)</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { rewardedAd.show(); }} style={[styles.retryButton, { backgroundColor: '#FFCC00', marginBottom: 12, paddingHorizontal: 30 }]}><Text style={[styles.retryButtonText, { color: '#000' }]}>WATCH AD TO REVIVE</Text></TouchableOpacity>
+              <TouchableOpacity onPress={processGameOver} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>GIVE UP (Take 25%)</Text></TouchableOpacity>
             </View>
           )}
 
@@ -662,21 +668,10 @@ export default function GameScreen() {
               <Text style={styles.successText}>HACK SUCCESSFUL</Text>
               <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Transferred ${score.toLocaleString()} to Bank</Text>
               {renderRunStats()}
-              <TouchableOpacity onPress={startGame} style={styles.retryButton}>
-                <Text style={styles.retryButtonText}>NEXT HEIST</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleShareResult} style={styles.shareButton}>
-                <Text style={styles.shareButtonText}>SHARE HEIST</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/shop')} style={styles.secondaryActionButton}>
-                <Text style={styles.secondaryActionText}>GO TO SHOP</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setGameState('START')}
-                style={[styles.menuButton, { borderColor: activeWorld.textSecondary, width: 180, marginTop: 12 }]}
-              >
-                <Text style={styles.menuButtonText}>MAIN MENU</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>NEXT HEIST</Text></TouchableOpacity>
+              <TouchableOpacity onPress={handleShareResult} style={styles.shareButton}><Text style={styles.shareButtonText}>SHARE HEIST</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/shop')} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>GO TO SHOP</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setGameState('START')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary, width: 180, marginTop: 12 }]}><Text style={styles.menuButtonText}>MAIN MENU</Text></TouchableOpacity>
             </Animated.View>
           )}
 
@@ -685,18 +680,9 @@ export default function GameScreen() {
               <Text style={styles.gameOverText}>SYSTEM LOCKED</Text>
               <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${consolationPrize.toLocaleString()}</Text>
               {renderRunStats()}
-              <TouchableOpacity onPress={startGame} style={styles.retryButton}>
-                <Text style={styles.retryButtonText}>RETRY</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/shop')} style={styles.secondaryActionButton}>
-                <Text style={styles.secondaryActionText}>GO TO SHOP</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setGameState('START')}
-                style={[styles.menuButton, { borderColor: activeWorld.textSecondary, width: 180, marginTop: 12 }]}
-              >
-                <Text style={styles.menuButtonText}>MAIN MENU</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>RETRY</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/shop')} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>GO TO SHOP</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setGameState('START')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary, width: 180, marginTop: 12 }]}><Text style={styles.menuButtonText}>MAIN MENU</Text></TouchableOpacity>
             </View>
           )}
         </View>
@@ -708,9 +694,7 @@ export default function GameScreen() {
             <Text style={styles.introTitle}>{CORE_TUTORIAL_STEPS[introStep].title}</Text>
             <Text style={styles.introText}>{CORE_TUTORIAL_STEPS[introStep].text}</Text>
             <Text style={styles.introProgress}>{introStep + 1} / 3</Text>
-            <TouchableOpacity onPress={advanceIntro} style={styles.introButton}>
-              <Text style={styles.introButtonText}>{introStep < 2 ? 'NEXT' : 'START HEIST'}</Text>
-            </TouchableOpacity>
+            <TouchableOpacity onPress={advanceIntro} style={styles.introButton}><Text style={styles.introButtonText}>{introStep < 2 ? 'NEXT' : 'START HEIST'}</Text></TouchableOpacity>
           </View>
         </View>
       )}
@@ -719,16 +703,9 @@ export default function GameScreen() {
         <View style={styles.introOverlay}>
           <View style={[styles.introCard, { borderColor: '#FFCC00' }]}>
             <Text style={[styles.introTitle, { color: '#FFCC00' }]}>DAILY BONUS</Text>
-            <Text style={styles.introText}>
-              Day {dailyModal.streak} streak! Claim +${dailyModal.cash.toLocaleString()}
-              {dailyModal.diamonds > 0 ? ` and 💎 ${dailyModal.diamonds}` : ''}.
-            </Text>
-            <TouchableOpacity onPress={handleClaimDaily} style={[styles.introButton, { backgroundColor: '#FFCC00' }]}>
-              <Text style={[styles.introButtonText, { color: '#000' }]}>CLAIM</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setDailyModal((m) => ({ ...m, visible: false }))} style={styles.introSkip}>
-              <Text style={styles.introSkipText}>Later</Text>
-            </TouchableOpacity>
+            <Text style={styles.introText}>Day {dailyModal.streak} streak! Claim +${dailyModal.cash.toLocaleString()}{dailyModal.diamonds > 0 ? ` and 💎 ${dailyModal.diamonds}` : ''}.</Text>
+            <TouchableOpacity onPress={handleClaimDaily} style={[styles.introButton, { backgroundColor: '#FFCC00' }]}><Text style={[styles.introButtonText, { color: '#000' }]}>CLAIM</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setDailyModal((m) => ({ ...m, visible: false }))} style={styles.introSkip}><Text style={styles.introSkipText}>Later</Text></TouchableOpacity>
           </View>
         </View>
       )}
@@ -755,33 +732,20 @@ const styles = StyleSheet.create({
   nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2 },
   vaultContainer: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, alignItems: 'center', justifyContent: 'center' },
   svg: { position: 'absolute' },
-  hitFlashOverlay: {
-    position: 'absolute',
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
-    borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: '#00FF66',
-  },
+  hitFlashOverlay: { position: 'absolute', width: CIRCLE_SIZE, height: CIRCLE_SIZE, borderRadius: CIRCLE_SIZE / 2, backgroundColor: '#00FF66' },
   pointerContainer: { position: 'absolute', width: CIRCLE_SIZE, height: CIRCLE_SIZE, alignItems: 'center' },
   pointer: { height: CIRCLE_SIZE / 2, borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
+  powerUpContainer: { flexDirection: 'row', gap: 20, position: 'absolute', bottom: 180, zIndex: 15 },
+  powerBtn: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 15, borderRadius: 25, borderWidth: 1, borderColor: '#444', alignItems: 'center', width: 60 },
+  powerIcon: { fontSize: 22, marginBottom: 2 },
+  powerCount: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
   hookText: { color: '#666', fontSize: 12, marginBottom: 25, textAlign: 'center', paddingHorizontal: 24 },
   menuRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 16 },
   menuButton: { backgroundColor: 'transparent', borderWidth: 1, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', position: 'relative' },
   menuButtonText: { color: '#FFCC00', fontWeight: 'bold', fontSize: 13, letterSpacing: 1 },
-  badge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#FF3B30',
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
+  badge: { position: 'absolute', top: -6, right: -6, backgroundColor: '#FF3B30', minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
   riskContainer: { alignItems: 'center', backgroundColor: 'rgba(5, 5, 5, 0.95)', padding: 25, borderRadius: 20, width: '90%', borderWidth: 1, borderColor: '#333' },
   riskTitle: { fontSize: 35, color: '#FFCC00', fontWeight: '900', letterSpacing: 2 },
@@ -810,14 +774,7 @@ const styles = StyleSheet.create({
   tutorialTitle: { fontSize: 18, color: '#00FFFF', fontWeight: '900', marginBottom: 10, textAlign: 'center' },
   tutorialText: { color: '#FFF', fontSize: 14, textAlign: 'center', marginBottom: 20 },
   tutorialTap: { color: '#FFCC00', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
-  introOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.88)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 200,
-    padding: 24,
-  },
+  introOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', zIndex: 200, padding: 24 },
   introCard: { width: '100%', maxWidth: 340, backgroundColor: '#111', borderWidth: 2, borderColor: '#00FF66', borderRadius: 20, padding: 24, alignItems: 'center' },
   introTitle: { fontSize: 20, color: '#00FF66', fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: 1 },
   introText: { color: '#FFF', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 16 },

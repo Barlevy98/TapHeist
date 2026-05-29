@@ -20,7 +20,33 @@ export const STORAGE_KEYS = {
   lastDailyClaim: 'last_daily_claim_date',
   dailyStreak: 'daily_streak_count',
   hapticsEnabled: 'settings_haptics_enabled',
+  // --- חדש: מפתחות למלאי הבוסטים ---
+  inv_smart_shield: 'inv_smart_shield',
+  inv_time_freeze: 'inv_time_freeze',
+  inv_precision_focus: 'inv_precision_focus',
 } as const;
+
+// --- חדש: ניהול מלאי הבוסטים ---
+export async function getPowerUpInventory(): Promise<Record<string, number>> {
+  const shield = await SecureStore.getItemAsync(STORAGE_KEYS.inv_smart_shield);
+  const freeze = await SecureStore.getItemAsync(STORAGE_KEYS.inv_time_freeze);
+  const focus = await SecureStore.getItemAsync(STORAGE_KEYS.inv_precision_focus);
+  return {
+    smart_shield: shield ? parseInt(shield, 10) : 0,
+    time_freeze: freeze ? parseInt(freeze, 10) : 0,
+    precision_focus: focus ? parseInt(focus, 10) : 0,
+  };
+}
+
+export async function addPowerUp(id: string, amount: number = 1): Promise<number> {
+  const key = `inv_${id}` as keyof typeof STORAGE_KEYS;
+  const currentStr = await SecureStore.getItemAsync(STORAGE_KEYS[key]);
+  const current = currentStr ? parseInt(currentStr, 10) : 0;
+  const newVal = current + amount;
+  await SecureStore.setItemAsync(STORAGE_KEYS[key], newVal.toString());
+  return newVal;
+}
+// ---------------------------------
 
 let hapticsEnabledCache: boolean | null = null;
 

@@ -6,15 +6,15 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
-import { SKINS, WORLDS, Skin, World } from '../gamedata';
-import { getNextUnlock } from '../gameHelpers';
+import { SKINS, WORLDS, POWER_UPS, Skin, World, PowerUp } from '../gamedata';
+import { getNextUnlock, getPowerUpInventory, addPowerUp } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
 
 export default function ShopScreen() {
   const router = useRouter();
   
-  const [activeTab, setActiveTab] = useState<'skins' | 'worlds'>('skins'); 
+  const [activeTab, setActiveTab] = useState<'skins' | 'worlds' | 'powerups'>('skins'); 
   
   const [bank, setBank] = useState(0);
   const [diamonds, setDiamonds] = useState(0);
@@ -25,10 +25,14 @@ export default function ShopScreen() {
   const [unlockedWorlds, setUnlockedWorlds] = useState<string[]>(['darknet']);
   const [equippedWorld, setEquippedWorld] = useState('darknet');
 
+  // סטייט חדש ששומר כמה בוסטים יש לנו
+  const [inventory, setInventory] = useState<Record<string, number>>({
+    smart_shield: 0, time_freeze: 0, precision_focus: 0
+  });
+
   const [errorModal, setErrorModal] = useState({ visible: false, missingAmount: 0, currency: '' });
   const [unlockCelebration, setUnlockCelebration] = useState<{ visible: boolean; name: string }>({
-    visible: false,
-    name: '',
+    visible: false, name: '',
   });
 
   const nextUnlock = getNextUnlock(bank, diamonds, unlockedSkins, unlockedWorlds);
@@ -54,63 +58,76 @@ export default function ShopScreen() {
       if (savedEquippedSkin !== null) setEquippedSkin(savedEquippedSkin);
       if (savedUnlockedWorlds !== null) setUnlockedWorlds(JSON.parse(savedUnlockedWorlds));
       if (savedEquippedWorld !== null) setEquippedWorld(savedEquippedWorld);
+
+      // טעינת המלאי של הבוסטים
+      const inv = await getPowerUpInventory();
+      setInventory(inv);
     } catch (e) { console.log('Error loading data', e); }
   };
 
-  const handlePurchase = async (item: Skin | World, type: 'skin' | 'world') => {
+  const handlePurchase = async (item: Skin | World | PowerUp, type: 'skin' | 'world' | 'powerup') => {
     const isSkin = type === 'skin';
-    const unlockedList = isSkin ? unlockedSkins : unlockedWorlds;
+    const isWorld = type === 'world';
+    const isPowerUp = type === 'powerup';
     
-    if (unlockedList.includes(item.id)) {
-      if (isSkin) {
-        setEquippedSkin(item.id);
-        await SecureStore.setItemAsync('vault_equipped_skin', item.id);
-      } else {
-        setEquippedWorld(item.id);
-        await SecureStore.setItemAsync('vault_equipped_world', item.id);
-      }
+    // סקינים ועולמות אי אפשר לקנות פעמיים
+    if (isSkin && unlockedSkins.includes(item.id)) {
+      setEquippedSkin(item.id);
+      await SecureStore.setItemAsync('vault_equipped_skin', item.id);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return;
+    }
+    if (isWorld && unlockedWorlds.includes(item.id)) {
+      setEquippedWorld(item.id);
+      await SecureStore.setItemAsync('vault_equipped_world', item.id);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return;
+    }
+
+    // בדיקת כסף
+    let canAfford = false;
+    let newBank = bank;
+    let newDiamonds = diamonds;
+
+    if (item.currency === 'cash' && bank >= item.price) {
+      canAfford = true;
+      newBank = bank - item.price;
+      setBank(newBank);
+      SecureStore.setItemAsync('vault_bank', newBank.toString());
+    } else if (item.currency === 'diamond' && diamonds >= item.price) {
+      canAfford = true;
+      newDiamonds = diamonds - item.price;
+      setDiamonds(newDiamonds);
+      SecureStore.setItemAsync('vault_diamonds', newDiamonds.toString());
+    }
+
+    if (canAfford) {
+      if (isSkin) {
+        const newUnlocked = [...unlockedSkins, item.id];
+        setUnlockedSkins(newUnlocked);
+        setEquippedSkin(item.id);
+        SecureStore.setItemAsync('vault_unlocked_skins', JSON.stringify(newUnlocked));
+        SecureStore.setItemAsync('vault_equipped_skin', item.id);
+      } else if (isWorld) {
+        const newUnlocked = [...unlockedWorlds, item.id];
+        setUnlockedWorlds(newUnlocked);
+        setEquippedWorld(item.id);
+        SecureStore.setItemAsync('vault_unlocked_worlds', JSON.stringify(newUnlocked));
+        SecureStore.setItemAsync('vault_equipped_world', item.id);
+      } else if (isPowerUp) {
+        // רכישת בוסט
+        const newVal = await addPowerUp(item.id, 1);
+        setInventory(prev => ({ ...prev, [item.id]: newVal }));
+      }
       
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setUnlockCelebration({ visible: true, name: item.name });
+      setTimeout(() => setUnlockCelebration({ visible: false, name: '' }), 2000);
     } else {
-      let canAfford = false;
-      let newBank = bank;
-      let newDiamonds = diamonds;
-
-      if (item.currency === 'cash' && bank >= item.price) {
-        canAfford = true;
-        newBank = bank - item.price;
-        setBank(newBank);
-        SecureStore.setItemAsync('vault_bank', newBank.toString());
-      } else if (item.currency === 'diamond' && diamonds >= item.price) {
-        canAfford = true;
-        newDiamonds = diamonds - item.price;
-        setDiamonds(newDiamonds);
-        SecureStore.setItemAsync('vault_diamonds', newDiamonds.toString());
-      }
-
-      if (canAfford) {
-        if (isSkin) {
-          const newUnlocked = [...unlockedSkins, item.id];
-          setUnlockedSkins(newUnlocked);
-          setEquippedSkin(item.id);
-          SecureStore.setItemAsync('vault_unlocked_skins', JSON.stringify(newUnlocked));
-          SecureStore.setItemAsync('vault_equipped_skin', item.id);
-        } else {
-          const newUnlocked = [...unlockedWorlds, item.id];
-          setUnlockedWorlds(newUnlocked);
-          setEquippedWorld(item.id);
-          SecureStore.setItemAsync('vault_unlocked_worlds', JSON.stringify(newUnlocked));
-          SecureStore.setItemAsync('vault_equipped_world', item.id);
-        }
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setUnlockCelebration({ visible: true, name: item.name });
-        setTimeout(() => setUnlockCelebration({ visible: false, name: '' }), 2500);
-      } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        const currentFunds = item.currency === 'cash' ? bank : diamonds;
-        const missing = item.price - currentFunds;
-        setErrorModal({ visible: true, missingAmount: missing, currency: item.currency });
-      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      const currentFunds = item.currency === 'cash' ? bank : diamonds;
+      const missing = item.price - currentFunds;
+      setErrorModal({ visible: true, missingAmount: missing, currency: item.currency });
     }
   };
 
@@ -127,7 +144,7 @@ export default function ShopScreen() {
 
         <Text style={styles.shopTitle}>BLACK MARKET</Text>
 
-        {nextUnlock && nextUnlock.missing > 0 && (
+        {nextUnlock && nextUnlock.missing > 0 && activeTab !== 'powerups' && (
           <Text style={styles.nextUnlockHint}>
             Next: {nextUnlock.name} — need {nextUnlock.currency === 'diamond' ? '💎' : '$'}
             {nextUnlock.missing.toLocaleString()} more
@@ -135,17 +152,14 @@ export default function ShopScreen() {
         )}
 
         <View style={styles.tabContainer}>
-          <TouchableOpacity 
-            style={[styles.tabButton, activeTab === 'skins' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('skins')}
-          >
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'skins' && styles.tabButtonActive]} onPress={() => setActiveTab('skins')}>
             <Text style={[styles.tabText, activeTab === 'skins' && styles.tabTextActive]}>POINTERS</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tabButton, activeTab === 'worlds' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('worlds')}
-          >
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'worlds' && styles.tabButtonActive]} onPress={() => setActiveTab('worlds')}>
             <Text style={[styles.tabText, activeTab === 'worlds' && styles.tabTextActive]}>WORLDS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'powerups' && styles.tabButtonActive]} onPress={() => setActiveTab('powerups')}>
+            <Text style={[styles.tabText, activeTab === 'powerups' && styles.tabTextActive]}>POWER-UPS</Text>
           </TouchableOpacity>
         </View>
         
@@ -158,8 +172,6 @@ export default function ShopScreen() {
             return (
               <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  
-                  {/* תצוגה מקדימה חדשה שתומכת ב-Gradients */}
                   <View style={[styles.colorPreviewContainer, { shadowColor: skin.color, shadowRadius: skin.glow / 2 }]}>
                     {skin.shape === 'gradient' && skin.primaryColor && skin.secondaryColor ? (
                       <Svg width="20" height="20">
@@ -175,7 +187,6 @@ export default function ShopScreen() {
                       <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: skin.color }} />
                     )}
                   </View>
-
                   <View>
                     <Text style={styles.itemName}>{skin.name}</Text>
                     <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
@@ -214,6 +225,29 @@ export default function ShopScreen() {
             );
           })}
 
+          {activeTab === 'powerups' && POWER_UPS.map((power) => {
+            const currentStock = inventory[power.id] || 0;
+            return (
+              <TouchableOpacity key={power.id} style={styles.shopItem} onPress={() => handlePurchase(power, 'powerup')}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', width: '70%' }}>
+                  <View style={[styles.colorPreviewContainer, { shadowColor: power.color }]}>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: power.color }} />
+                  </View>
+                  <View style={{ paddingRight: 10 }}>
+                    <Text style={styles.itemName}>{power.name}</Text>
+                    <Text style={[styles.itemSpecs, { lineHeight: 14 }]}>{power.desc}</Text>
+                    {currentStock > 0 && <Text style={{ color: '#00FF66', fontSize: 10, marginTop: 4, fontWeight: 'bold' }}>IN STOCK: {currentStock}</Text>}
+                  </View>
+                </View>
+                <View>
+                   <Text style={[styles.itemStatus, { color: power.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>
+                     {power.currency === 'diamond' ? `💎 ${power.price.toLocaleString()}` : `$${power.price.toLocaleString()}`}
+                   </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
         </ScrollView>
 
         <View style={styles.footer}>
@@ -225,14 +259,8 @@ export default function ShopScreen() {
         {unlockCelebration.visible && (
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { borderColor: '#00FF66' }]}>
-              <Text style={[styles.modalTitle, { color: '#00FF66' }]}>UNLOCKED</Text>
+              <Text style={[styles.modalTitle, { color: '#00FF66' }]}>ACQUIRED</Text>
               <Text style={styles.modalText}>{unlockCelebration.name} is now in your arsenal.</Text>
-              <TouchableOpacity
-                onPress={() => setUnlockCelebration({ visible: false, name: '' })}
-                style={[styles.modalButton, { backgroundColor: '#00FF66' }]}
-              >
-                <Text style={[styles.modalButtonText, { color: '#0A0A0A' }]}>EQUIP & HACK</Text>
-              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -243,16 +271,14 @@ export default function ShopScreen() {
               <Text style={styles.modalTitle}>ACCESS DENIED</Text>
               <Text style={styles.modalText}>Insufficient Funds.</Text>
               <Text style={styles.modalSubText}>
-                You need {errorModal.currency === 'diamond' ? '💎' : '$'}{errorModal.missingAmount.toLocaleString()} more to acquire this upgrade.
+                You need {errorModal.currency === 'diamond' ? '💎' : '$'}{errorModal.missingAmount.toLocaleString()} more to acquire this.
               </Text>
-              
               <TouchableOpacity onPress={() => setErrorModal({ ...errorModal, visible: false })} style={styles.modalButton}>
                 <Text style={styles.modalButtonText}>ACKNOWLEDGE</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
-
       </View>
     </SafeAreaView>
   );
@@ -268,16 +294,13 @@ const styles = StyleSheet.create({
   diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', marginTop: 5 },
   shopTitle: { fontSize: 32, color: '#FFF', fontWeight: '900', letterSpacing: 2, textAlign: 'center', marginBottom: 8 },
   nextUnlockHint: { color: '#FFCC00', fontSize: 12, fontWeight: 'bold', textAlign: 'center', marginBottom: 12, paddingHorizontal: 24 },
-  tabContainer: { flexDirection: 'row', justifyContent: 'center', gap: 15, marginBottom: 10 },
-  tabButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, borderWidth: 1, borderColor: '#333' },
+  tabContainer: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 10 },
+  tabButton: { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1, borderColor: '#333' },
   tabButtonActive: { backgroundColor: '#FFCC00', borderColor: '#FFCC00' },
-  tabText: { color: '#666', fontWeight: 'bold' },
+  tabText: { color: '#666', fontWeight: 'bold', fontSize: 12 },
   tabTextActive: { color: '#000', fontWeight: '900' },
   shopItem: { width: '90%', backgroundColor: '#111', borderWidth: 1, borderColor: '#222', padding: 18, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  
-  // סגנון חדש למעטפת של תצוגת הצבע
   colorPreviewContainer: { marginRight: 15, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
-  
   itemName: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
   itemSpecs: { color: '#666', fontSize: 11, marginTop: 3 },
   itemStatus: { fontWeight: '900', fontSize: 16 },
