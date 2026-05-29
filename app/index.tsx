@@ -10,7 +10,7 @@ import Animated, {
   Easing,
   cancelAnimation,
 } from 'react-native-reanimated';
-import Svg, { Circle, Polygon, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Polygon, Path, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -92,6 +92,11 @@ export default function GameScreen() {
   const [adLoaded, setAdLoaded] = useState(false);
   const [hasRevivedThisRun, setHasRevivedThisRun] = useState(false);
   const [pendingRevive, setPendingRevive] = useState(false);
+
+  // --- ערכי האנימציות לממשק הבוסטים החדש ---
+  const shieldScale = useSharedValue(1);
+  const freezeScale = useSharedValue(1);
+  const focusScale = useSharedValue(1);
 
   const floatAnim = useSharedValue(0);
   const floatOpacity = useSharedValue(0);
@@ -308,6 +313,12 @@ export default function GameScreen() {
     setFocusTapsLeft(0);
     setIsFrozen(false);
     isFrozenRef.current = false;
+    
+    // איפוס אנימציות של הבוסטים
+    cancelAnimation(shieldScale); shieldScale.value = 1;
+    cancelAnimation(freezeScale); freezeScale.value = 1;
+    cancelAnimation(focusScale); focusScale.value = 1;
+
     targetOpacity.value = 1;
 
     setGameState('PLAYING');
@@ -329,6 +340,7 @@ export default function GameScreen() {
       setInventory(prev => ({ ...prev, smart_shield: prev.smart_shield - 1 }));
       await addPowerUp('smart_shield', -1);
       setIsShieldActive(true);
+      shieldScale.value = withRepeat(withSequence(withTiming(1.15, {duration: 500}), withTiming(1, {duration: 500})), -1, true);
     }
   };
 
@@ -340,12 +352,15 @@ export default function GameScreen() {
       
       setIsFrozen(true);
       isFrozenRef.current = true;
+      freezeScale.value = withRepeat(withSequence(withTiming(1.15, {duration: 500}), withTiming(1, {duration: 500})), -1, true);
+
       cancelAnimation(rotation);
       startRotation(getSpeedDuration(combo, true), direction);
 
       setTimeout(() => {
         isFrozenRef.current = false;
         setIsFrozen(false);
+        cancelAnimation(freezeScale); freezeScale.value = 1;
       }, 3000); 
     }
   };
@@ -356,6 +371,7 @@ export default function GameScreen() {
       setInventory(prev => ({ ...prev, precision_focus: prev.precision_focus - 1 }));
       await addPowerUp('precision_focus', -1);
       setFocusTapsLeft(5); 
+      focusScale.value = withRepeat(withSequence(withTiming(1.15, {duration: 500}), withTiming(1, {duration: 500})), -1, true);
     }
   };
 
@@ -420,7 +436,12 @@ export default function GameScreen() {
     const isNearMiss = !isHit && angleDiff <= (currentZoneSize / 2) * NEAR_MISS_MULTIPLIER;
 
     if (isHit) {
-      if (focusTapsLeft > 0) setFocusTapsLeft(prev => prev - 1); 
+      if (focusTapsLeft > 0) {
+        setFocusTapsLeft(prev => prev - 1); 
+        if (focusTapsLeft - 1 === 0) {
+          cancelAnimation(focusScale); focusScale.value = 1;
+        }
+      }
 
       const newCombo = combo + 1;
       setCombo(newCombo);
@@ -447,7 +468,6 @@ export default function GameScreen() {
         setDirection(nextDirection);
       }
 
-      // --- ביטול ה-Risk Mode בעולם היהלומים! ---
       if (newCombo % 10 === 0 && activeWorld.id !== 'diamond_world') { 
         await enterRiskMode(); 
         return; 
@@ -461,6 +481,7 @@ export default function GameScreen() {
 
       if (isShieldActive) {
         setIsShieldActive(false);
+        cancelAnimation(shieldScale); shieldScale.value = 1;
         flashMiss();
         showNearMiss('🛡️ SHIELD BROKEN!');
         const nextDirection = direction === 1 ? -1 : 1;
@@ -489,6 +510,11 @@ export default function GameScreen() {
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
   const successPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: successPulse.value }] }));
   const targetOpacityStyle = useAnimatedStyle(() => ({ opacity: targetOpacity.value }));
+  
+  // אנימציות הבוסטים החדשים
+  const shieldAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: shieldScale.value }] }));
+  const freezeAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: freezeScale.value }] }));
+  const focusAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: focusScale.value }] }));
 
   const radius = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -527,7 +553,6 @@ export default function GameScreen() {
         {gameState === 'PLAYING' && combo > 0 && (
           <View style={styles.comboHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              {isShieldActive && <Text style={{ fontSize: 24 }}>🛡️</Text>}
               <Text style={[styles.comboText, { color: activeSkin.color }]}>{combo} COMBO</Text>
             </View>
             {isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
@@ -575,24 +600,33 @@ export default function GameScreen() {
                 </Svg>
               )}
               
-              {/* --- סקינים חדשים שלב 4 --- */}
+              {/* --- עיצוב בלוקצ'יין וקטורי מרהיב ונקי (ללא לוגואים של חברות) --- */}
               {activeSkin.shape === 'binary' && (
-                <View style={{ alignItems: 'center', justifyContent: 'space-between', height: CIRCLE_SIZE / 2, paddingVertical: 10, shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
-                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>0</Text>
-                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>1</Text>
-                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>1</Text>
-                  <Text style={{ color: activeSkin.color, fontWeight: '900', fontSize: 18, lineHeight: 18 }}>0</Text>
-                </View>
+                <Svg width={40} height={CIRCLE_SIZE / 2} style={{ shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
+                  <Defs>
+                    <LinearGradient id="binaryGrad" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0" stopColor={activeSkin.color} stopOpacity="0.1" />
+                      <Stop offset="0.4" stopColor={activeSkin.color} stopOpacity="0.4" />
+                      <Stop offset="0.8" stopColor={activeSkin.color} stopOpacity="0.8" />
+                      <Stop offset="1" stopColor={activeSkin.color} stopOpacity="1" />
+                    </LinearGradient>
+                  </Defs>
+                  <Path d={`M15,0 L25,0 L20,${CIRCLE_SIZE/2 - 15} Z`} fill="url(#binaryGrad)" />
+                  <SvgText x="20" y="25" fill={activeSkin.color} opacity="0.3" fontSize="14" textAnchor="middle" fontWeight="bold">0</SvgText>
+                  <SvgText x="20" y="55" fill={activeSkin.color} opacity="0.6" fontSize="16" textAnchor="middle" fontWeight="bold">1</SvgText>
+                  <SvgText x="20" y="85" fill={activeSkin.color} opacity="0.9" fontSize="18" textAnchor="middle" fontWeight="bold">0</SvgText>
+                  <Polygon points={`10,${CIRCLE_SIZE/2 - 15} 30,${CIRCLE_SIZE/2 - 15} 20,${CIRCLE_SIZE/2}`} fill={activeSkin.color} />
+                </Svg>
               )}
               
               {activeSkin.shape === 'chain' && (
-                <View style={{ alignItems: 'center', justifyContent: 'space-between', height: CIRCLE_SIZE / 2, paddingVertical: 10, shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
-                  <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 4, borderColor: activeSkin.color }} />
-                  <View style={{ width: 4, height: 12, backgroundColor: activeSkin.color }} />
-                  <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 4, borderColor: activeSkin.color }} />
-                  <View style={{ width: 4, height: 12, backgroundColor: activeSkin.color }} />
-                  <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 4, borderColor: activeSkin.color }} />
-                </View>
+                <Svg width={40} height={CIRCLE_SIZE / 2} style={{ shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
+                  <Polygon points="20,5 30,10 30,20 20,25 10,20 10,10" fill="none" stroke={activeSkin.color} strokeWidth="3" />
+                  <Path d="M20,25 L20,40" stroke={activeSkin.color} strokeWidth="3" strokeDasharray="4 4" />
+                  <Polygon points="20,40 32,45 32,58 20,63 8,58 8,45" fill="none" stroke={activeSkin.color} strokeWidth="4" />
+                  <Path d="M20,63 L20,80" stroke={activeSkin.color} strokeWidth="3" strokeDasharray="4 4" />
+                  <Polygon points="20,80 35,88 35,105 20,115 5,105 5,88" fill={activeSkin.color} />
+                </Svg>
               )}
               {/* --------------------------- */}
               
@@ -600,20 +634,29 @@ export default function GameScreen() {
           </View>
         </Pressable>
 
+        {/* --- קונסולת הבוסטים החדשה והאלגנטית בתחתית המסך --- */}
         {gameState === 'PLAYING' && (
-          <View style={styles.powerUpContainer}>
-            <TouchableOpacity style={[styles.powerBtn, (inventory.smart_shield === 0 || isShieldActive) && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
-              <Text style={styles.powerIcon}>🛡️</Text>
-              <Text style={styles.powerCount}>{inventory.smart_shield}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.powerBtn, (inventory.time_freeze === 0 || isFrozen) && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
-              <Text style={styles.powerIcon}>❄️</Text>
-              <Text style={styles.powerCount}>{inventory.time_freeze}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.powerBtn, (inventory.precision_focus === 0 || focusTapsLeft > 0) && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
-              <Text style={styles.powerIcon}>🎯</Text>
-              <Text style={styles.powerCount}>{inventory.precision_focus}</Text>
-            </TouchableOpacity>
+          <View style={styles.tacticalOverlay}>
+            <Animated.View style={[shieldAnimStyle, { zIndex: isShieldActive ? 10 : 1 }]}>
+              <TouchableOpacity style={[styles.tacticalBtn, isShieldActive && { borderColor: '#00FF66', backgroundColor: 'rgba(0,255,102,0.15)' }, inventory.smart_shield === 0 && !isShieldActive && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
+                <Text style={styles.powerIcon}>🛡️</Text>
+                <Text style={[styles.powerCount, isShieldActive && { color: '#00FF66' }]}>{isShieldActive ? 'ACTIVE' : inventory.smart_shield}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View style={[freezeAnimStyle, { zIndex: isFrozen ? 10 : 1 }]}>
+              <TouchableOpacity style={[styles.tacticalBtn, isFrozen && { borderColor: '#00FFFF', backgroundColor: 'rgba(0,255,255,0.15)' }, inventory.time_freeze === 0 && !isFrozen && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
+                <Text style={styles.powerIcon}>❄️</Text>
+                <Text style={[styles.powerCount, isFrozen && { color: '#00FFFF' }]}>{isFrozen ? 'ACTIVE' : inventory.time_freeze}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View style={[focusAnimStyle, { zIndex: focusTapsLeft > 0 ? 10 : 1 }]}>
+              <TouchableOpacity style={[styles.tacticalBtn, focusTapsLeft > 0 && { borderColor: '#FFCC00', backgroundColor: 'rgba(255,204,0,0.15)' }, inventory.precision_focus === 0 && focusTapsLeft === 0 && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
+                <Text style={styles.powerIcon}>🎯</Text>
+                <Text style={[styles.powerCount, focusTapsLeft > 0 && { color: '#FFCC00' }]}>{focusTapsLeft > 0 ? `${focusTapsLeft} TAPS` : inventory.precision_focus}</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         )}
 
@@ -735,10 +778,36 @@ const styles = StyleSheet.create({
   hitFlashOverlay: { position: 'absolute', width: CIRCLE_SIZE, height: CIRCLE_SIZE, borderRadius: CIRCLE_SIZE / 2, backgroundColor: '#00FF66' },
   pointerContainer: { position: 'absolute', width: CIRCLE_SIZE, height: CIRCLE_SIZE, alignItems: 'center' },
   pointer: { height: CIRCLE_SIZE / 2, borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
-  powerUpContainer: { flexDirection: 'row', gap: 20, position: 'absolute', bottom: 180, zIndex: 15 },
-  powerBtn: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 15, borderRadius: 25, borderWidth: 1, borderColor: '#444', alignItems: 'center', width: 60 },
-  powerIcon: { fontSize: 22, marginBottom: 2 },
-  powerCount: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
+  
+  // --- העיצוב החדש והנקי של ממשק הבוסטים ---
+  tacticalOverlay: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    gap: 15, 
+    position: 'absolute', 
+    bottom: 120, 
+    width: '100%',
+    paddingHorizontal: 20,
+    zIndex: 15,
+  },
+  tacticalBtn: { 
+    backgroundColor: 'rgba(5,5,5,0.75)', 
+    paddingVertical: 12, 
+    paddingHorizontal: 15,
+    borderRadius: 20, 
+    borderWidth: 1.5, 
+    borderColor: 'rgba(255,255,255,0.1)', 
+    alignItems: 'center', 
+    minWidth: 75,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+  },
+  powerIcon: { fontSize: 24, marginBottom: 4 },
+  powerCount: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  // ----------------------------------------
+  
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
   hookText: { color: '#666', fontSize: 12, marginBottom: 25, textAlign: 'center', paddingHorizontal: 24 },

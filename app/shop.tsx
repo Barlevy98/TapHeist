@@ -25,7 +25,6 @@ export default function ShopScreen() {
   const [unlockedWorlds, setUnlockedWorlds] = useState<string[]>(['darknet']);
   const [equippedWorld, setEquippedWorld] = useState('darknet');
 
-  // סטייט חדש ששומר כמה בוסטים יש לנו
   const [inventory, setInventory] = useState<Record<string, number>>({
     smart_shield: 0, time_freeze: 0, precision_focus: 0
   });
@@ -59,7 +58,6 @@ export default function ShopScreen() {
       if (savedUnlockedWorlds !== null) setUnlockedWorlds(JSON.parse(savedUnlockedWorlds));
       if (savedEquippedWorld !== null) setEquippedWorld(savedEquippedWorld);
 
-      // טעינת המלאי של הבוסטים
       const inv = await getPowerUpInventory();
       setInventory(inv);
     } catch (e) { console.log('Error loading data', e); }
@@ -70,7 +68,7 @@ export default function ShopScreen() {
     const isWorld = type === 'world';
     const isPowerUp = type === 'powerup';
     
-    // סקינים ועולמות אי אפשר לקנות פעמיים
+    // ציוד פריטים שכבר נקנו (ללא Auto-Equip ברכישה ראשונית)
     if (isSkin && unlockedSkins.includes(item.id)) {
       setEquippedSkin(item.id);
       await SecureStore.setItemAsync('vault_equipped_skin', item.id);
@@ -84,7 +82,6 @@ export default function ShopScreen() {
       return;
     }
 
-    // בדיקת כסף
     let canAfford = false;
     let newBank = bank;
     let newDiamonds = diamonds;
@@ -105,24 +102,21 @@ export default function ShopScreen() {
       if (isSkin) {
         const newUnlocked = [...unlockedSkins, item.id];
         setUnlockedSkins(newUnlocked);
-        setEquippedSkin(item.id);
         SecureStore.setItemAsync('vault_unlocked_skins', JSON.stringify(newUnlocked));
-        SecureStore.setItemAsync('vault_equipped_skin', item.id);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else if (isWorld) {
         const newUnlocked = [...unlockedWorlds, item.id];
         setUnlockedWorlds(newUnlocked);
-        setEquippedWorld(item.id);
         SecureStore.setItemAsync('vault_unlocked_worlds', JSON.stringify(newUnlocked));
-        SecureStore.setItemAsync('vault_equipped_world', item.id);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else if (isPowerUp) {
-        // רכישת בוסט
         const newVal = await addPowerUp(item.id, 1);
         setInventory(prev => ({ ...prev, [item.id]: newVal }));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // המודאל הקופץ מופיע אך ורק ברכישת בוסטים
+        setUnlockCelebration({ visible: true, name: item.name });
+        setTimeout(() => setUnlockCelebration({ visible: false, name: '' }), 2000);
       }
-      
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setUnlockCelebration({ visible: true, name: item.name });
-      setTimeout(() => setUnlockCelebration({ visible: false, name: '' }), 2000);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const currentFunds = item.currency === 'cash' ? bank : diamonds;
@@ -304,7 +298,7 @@ const styles = StyleSheet.create({
   itemName: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
   itemSpecs: { color: '#666', fontSize: 11, marginTop: 3 },
   itemStatus: { fontWeight: '900', fontSize: 16 },
-  footer: { position: 'absolute', bottom: 30, width: '100%', alignItems: 'center' },
+  footer: { position: 'absolute', bottom: 30, width: '100%', alignItems: 'center', zIndex: 10 },
   closeShopButton: { backgroundColor: '#FFF', paddingVertical: 15, width: '90%', borderRadius: 30, alignItems: 'center', shadowColor: '#FFF', shadowOpacity: 0.2, shadowRadius: 10 },
   closeShopText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16, letterSpacing: 1 },
   modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
