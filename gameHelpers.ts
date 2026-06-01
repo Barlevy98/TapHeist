@@ -12,7 +12,9 @@ export const STORAGE_KEYS = {
   claimedMissions: 'vault_claimed_missions',
   maxCombo: 'stat_maxCombo',
   maxMultiplier: 'stat_maxMultiplier',
-  maxBank: 'stat_maxBank',
+  maxBank: 'stat_maxBank', // שמרנו כדי לא לדרוס נתונים קיימים
+  bestRunCash: 'stat_best_run_cash', // --- חדש ---
+  bestRunDiamonds: 'stat_best_run_diamonds', // --- חדש ---
   totalHeists: 'stat_total_heists',
   diamondTutorial: 'has_seen_tutorial',
   coreTutorial: 'has_seen_core_tutorial',
@@ -20,13 +22,11 @@ export const STORAGE_KEYS = {
   lastDailyClaim: 'last_daily_claim_date',
   dailyStreak: 'daily_streak_count',
   hapticsEnabled: 'settings_haptics_enabled',
-  // --- חדש: מפתחות למלאי הבוסטים ---
   inv_smart_shield: 'inv_smart_shield',
   inv_time_freeze: 'inv_time_freeze',
   inv_precision_focus: 'inv_precision_focus',
 } as const;
 
-// --- חדש: ניהול מלאי הבוסטים ---
 export async function getPowerUpInventory(): Promise<Record<string, number>> {
   const shield = await SecureStore.getItemAsync(STORAGE_KEYS.inv_smart_shield);
   const freeze = await SecureStore.getItemAsync(STORAGE_KEYS.inv_time_freeze);
@@ -46,7 +46,6 @@ export async function addPowerUp(id: string, amount: number = 1): Promise<number
   await SecureStore.setItemAsync(STORAGE_KEYS[key], newVal.toString());
   return newVal;
 }
-// ---------------------------------
 
 let hapticsEnabledCache: boolean | null = null;
 

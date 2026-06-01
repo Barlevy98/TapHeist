@@ -10,7 +10,7 @@ import Animated, {
   Easing,
   cancelAnimation,
 } from 'react-native-reanimated';
-import Svg, { Circle, Polygon, Path, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Polygon, Path, Text as SvgText, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -93,7 +93,6 @@ export default function GameScreen() {
   const [hasRevivedThisRun, setHasRevivedThisRun] = useState(false);
   const [pendingRevive, setPendingRevive] = useState(false);
 
-  // --- ערכי האנימציות לממשק הבוסטים החדש ---
   const shieldScale = useSharedValue(1);
   const freezeScale = useSharedValue(1);
   const focusScale = useSharedValue(1);
@@ -314,7 +313,6 @@ export default function GameScreen() {
     setIsFrozen(false);
     isFrozenRef.current = false;
     
-    // איפוס אנימציות של הבוסטים
     cancelAnimation(shieldScale); shieldScale.value = 1;
     cancelAnimation(freezeScale); freezeScale.value = 1;
     cancelAnimation(focusScale); focusScale.value = 1;
@@ -388,6 +386,11 @@ export default function GameScreen() {
     pulseSuccess();
     updateAndPersistBank(score);
     await incrementTotalHeists();
+    
+    // --- שמירת הסטטיסטיקות החדשות (CASH OUT) ---
+    updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
+    updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
+    
     setGameState('CASHED_OUT');
     const claimable = await countClaimableMissions();
     setMissionBadge(claimable);
@@ -415,6 +418,11 @@ export default function GameScreen() {
     setConsolationPrize(calculatedPrize);
     updateAndPersistBank(calculatedPrize);
     await incrementTotalHeists();
+    
+    // --- שמירת הסטטיסטיקות החדשות (GAME OVER - 25% פרס תנחומים) ---
+    updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
+    updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
+    
     targetOpacity.value = 1; 
     setGameState('GAMEOVER');
     const claimable = await countClaimableMissions();
@@ -511,7 +519,6 @@ export default function GameScreen() {
   const successPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: successPulse.value }] }));
   const targetOpacityStyle = useAnimatedStyle(() => ({ opacity: targetOpacity.value }));
   
-  // אנימציות הבוסטים החדשים
   const shieldAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: shieldScale.value }] }));
   const freezeAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: freezeScale.value }] }));
   const focusAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: focusScale.value }] }));
@@ -600,60 +607,66 @@ export default function GameScreen() {
                 </Svg>
               )}
               
-              {/* --- עיצוב בלוקצ'יין וקטורי מרהיב ונקי (ללא לוגואים של חברות) --- */}
               {activeSkin.shape === 'binary' && (
                 <Svg width={40} height={CIRCLE_SIZE / 2} style={{ shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
                   <Defs>
                     <LinearGradient id="binaryGrad" x1="0" y1="0" x2="0" y2="1">
-                      <Stop offset="0" stopColor={activeSkin.color} stopOpacity="0.1" />
-                      <Stop offset="0.4" stopColor={activeSkin.color} stopOpacity="0.4" />
-                      <Stop offset="0.8" stopColor={activeSkin.color} stopOpacity="0.8" />
+                      <Stop offset="0" stopColor={activeSkin.color} stopOpacity="0.0" />
+                      <Stop offset="0.5" stopColor={activeSkin.color} stopOpacity="0.5" />
                       <Stop offset="1" stopColor={activeSkin.color} stopOpacity="1" />
                     </LinearGradient>
                   </Defs>
-                  <Path d={`M15,0 L25,0 L20,${CIRCLE_SIZE/2 - 15} Z`} fill="url(#binaryGrad)" />
-                  <SvgText x="20" y="25" fill={activeSkin.color} opacity="0.3" fontSize="14" textAnchor="middle" fontWeight="bold">0</SvgText>
-                  <SvgText x="20" y="55" fill={activeSkin.color} opacity="0.6" fontSize="16" textAnchor="middle" fontWeight="bold">1</SvgText>
-                  <SvgText x="20" y="85" fill={activeSkin.color} opacity="0.9" fontSize="18" textAnchor="middle" fontWeight="bold">0</SvgText>
-                  <Polygon points={`10,${CIRCLE_SIZE/2 - 15} 30,${CIRCLE_SIZE/2 - 15} 20,${CIRCLE_SIZE/2}`} fill={activeSkin.color} />
+                  <Path d={`M18,0 L22,0 L22,${CIRCLE_SIZE/2 - 20} L18,${CIRCLE_SIZE/2 - 20} Z`} fill="url(#binaryGrad)" />
+                  <Rect x="14" y="20" width="12" height="4" fill={activeSkin.color} opacity="0.4" />
+                  <Rect x="16" y="45" width="8" height="4" fill={activeSkin.color} opacity="0.7" />
+                  <Rect x="12" y="70" width="16" height="4" fill={activeSkin.color} opacity="0.9" />
+                  <Polygon points={`10,${CIRCLE_SIZE/2 - 20} 30,${CIRCLE_SIZE/2 - 20} 20,${CIRCLE_SIZE/2}`} fill={activeSkin.color} />
                 </Svg>
               )}
               
               {activeSkin.shape === 'chain' && (
                 <Svg width={40} height={CIRCLE_SIZE / 2} style={{ shadowColor: activeSkin.color, shadowRadius: activeSkin.glow, shadowOpacity: 1 }}>
-                  <Polygon points="20,5 30,10 30,20 20,25 10,20 10,10" fill="none" stroke={activeSkin.color} strokeWidth="3" />
-                  <Path d="M20,25 L20,40" stroke={activeSkin.color} strokeWidth="3" strokeDasharray="4 4" />
-                  <Polygon points="20,40 32,45 32,58 20,63 8,58 8,45" fill="none" stroke={activeSkin.color} strokeWidth="4" />
-                  <Path d="M20,63 L20,80" stroke={activeSkin.color} strokeWidth="3" strokeDasharray="4 4" />
-                  <Polygon points="20,80 35,88 35,105 20,115 5,105 5,88" fill={activeSkin.color} />
+                  <Polygon points="20,10 28,15 28,25 20,30 12,25 12,15" fill="none" stroke={activeSkin.color} strokeWidth="3" />
+                  <Circle cx="20" cy="20" r="2" fill={activeSkin.color} />
+                  <Path d="M20,30 L20,45" stroke={activeSkin.color} strokeWidth="3" strokeDasharray="3 3" />
+                  <Polygon points="20,45 28,50 28,60 20,65 12,60 12,50" fill="none" stroke={activeSkin.color} strokeWidth="3" />
+                  <Circle cx="20" cy="55" r="2" fill={activeSkin.color} />
+                  <Path d="M20,65 L20,80" stroke={activeSkin.color} strokeWidth="3" strokeDasharray="3 3" />
+                  <Polygon points="20,80 32,86 32,100 20,115 8,100 8,86" fill={activeSkin.color} />
+                  <Polygon points="20,86 26,90 26,98 20,105 14,98 14,90" fill="#000" opacity="0.5" />
                 </Svg>
               )}
-              {/* --------------------------- */}
               
             </Animated.View>
           </View>
         </Pressable>
 
-        {/* --- קונסולת הבוסטים החדשה והאלגנטית בתחתית המסך --- */}
         {gameState === 'PLAYING' && (
           <View style={styles.tacticalOverlay}>
             <Animated.View style={[shieldAnimStyle, { zIndex: isShieldActive ? 10 : 1 }]}>
               <TouchableOpacity style={[styles.tacticalBtn, isShieldActive && { borderColor: '#00FF66', backgroundColor: 'rgba(0,255,102,0.15)' }, inventory.smart_shield === 0 && !isShieldActive && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
-                <Text style={styles.powerIcon}>🛡️</Text>
+                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={isShieldActive ? "#00FF66" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </Svg>
                 <Text style={[styles.powerCount, isShieldActive && { color: '#00FF66' }]}>{isShieldActive ? 'ACTIVE' : inventory.smart_shield}</Text>
               </TouchableOpacity>
             </Animated.View>
 
             <Animated.View style={[freezeAnimStyle, { zIndex: isFrozen ? 10 : 1 }]}>
               <TouchableOpacity style={[styles.tacticalBtn, isFrozen && { borderColor: '#00FFFF', backgroundColor: 'rgba(0,255,255,0.15)' }, inventory.time_freeze === 0 && !isFrozen && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
-                <Text style={styles.powerIcon}>❄️</Text>
+                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={isFrozen ? "#00FFFF" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Polygon points="12 2 22 8 22 16 12 22 2 16 2 8" />
+                  <Path d="M12 7v5l3 3" />
+                </Svg>
                 <Text style={[styles.powerCount, isFrozen && { color: '#00FFFF' }]}>{isFrozen ? 'ACTIVE' : inventory.time_freeze}</Text>
               </TouchableOpacity>
             </Animated.View>
 
             <Animated.View style={[focusAnimStyle, { zIndex: focusTapsLeft > 0 ? 10 : 1 }]}>
               <TouchableOpacity style={[styles.tacticalBtn, focusTapsLeft > 0 && { borderColor: '#FFCC00', backgroundColor: 'rgba(255,204,0,0.15)' }, inventory.precision_focus === 0 && focusTapsLeft === 0 && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
-                <Text style={styles.powerIcon}>🎯</Text>
+                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={focusTapsLeft > 0 ? "#FFCC00" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M12 8v8M8 12h8" />
+                </Svg>
                 <Text style={[styles.powerCount, focusTapsLeft > 0 && { color: '#FFCC00' }]}>{focusTapsLeft > 0 ? `${focusTapsLeft} TAPS` : inventory.precision_focus}</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -779,34 +792,31 @@ const styles = StyleSheet.create({
   pointerContainer: { position: 'absolute', width: CIRCLE_SIZE, height: CIRCLE_SIZE, alignItems: 'center' },
   pointer: { height: CIRCLE_SIZE / 2, borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
   
-  // --- העיצוב החדש והנקי של ממשק הבוסטים ---
   tacticalOverlay: { 
     flexDirection: 'row', 
     justifyContent: 'center', 
-    gap: 15, 
+    gap: 20, 
     position: 'absolute', 
-    bottom: 120, 
+    bottom: 125, 
     width: '100%',
     paddingHorizontal: 20,
     zIndex: 15,
   },
   tacticalBtn: { 
-    backgroundColor: 'rgba(5,5,5,0.75)', 
-    paddingVertical: 12, 
-    paddingHorizontal: 15,
-    borderRadius: 20, 
+    backgroundColor: 'rgba(10,10,15,0.85)', 
+    paddingVertical: 14, 
+    paddingHorizontal: 18,
+    borderRadius: 16, 
     borderWidth: 1.5, 
-    borderColor: 'rgba(255,255,255,0.1)', 
+    borderColor: 'rgba(255,255,255,0.15)', 
     alignItems: 'center', 
-    minWidth: 75,
+    minWidth: 80,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
-  powerIcon: { fontSize: 24, marginBottom: 4 },
-  powerCount: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
-  // ----------------------------------------
+  powerCount: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1, marginTop: 6 },
   
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },

@@ -6,7 +6,6 @@ export interface Skin {
   color: string;
   glow: number;
   width: number;
-  // הוספנו תמיכה בצורות המיוחדות של שלב 4
   shape: 'standard' | 'spiked' | 'lightning' | 'gradient' | 'binary' | 'chain';
   primaryColor?: string;
   secondaryColor?: string;
@@ -50,20 +49,25 @@ export const SKINS: Skin[] = [
   { id: 'phantom', name: 'PHANTOM GREY', currency: 'cash', price: 2000, color: '#2C2C2E', glow: 10, width: 5, shape: 'standard' }, 
   { id: 'plasma', name: 'PLASMA SHOCK', currency: 'cash', price: 2500, color: '#FF9900', glow: 18, width: 6, shape: 'lightning' },
   { id: 'emerald', name: 'EMERALD DAGGER', currency: 'cash', price: 5000, color: '#00FF88', glow: 15, width: 6, shape: 'spiked' },
+  { id: 'titan_white', name: 'TITAN WHITE', currency: 'cash', price: 8500, color: '#FFFFFF', glow: 15, width: 12, shape: 'standard' }, // --- הלבן הרחב החדש ---
   { id: 'void', name: 'VOID MATTER', currency: 'cash', price: 10000, color: '#8A2BE2', glow: 25, width: 8, shape: 'lightning' },
   { id: 'obsidian', name: 'OBSIDIAN BLACK', currency: 'cash', price: 15000, color: '#0A0A0A', glow: 15, width: 7, shape: 'standard' }, 
   { id: 'glitch', name: 'GLITCH CORE', currency: 'cash', price: 25000, color: '#FF0055', glow: 30, width: 7, shape: 'standard' },
   { id: 'hacker_king', name: 'HACKER KING', currency: 'cash', price: 50000, color: '#FF4500', glow: 40, width: 10, shape: 'lightning' },
   { id: 'cyber_demon', name: 'CYBER DEMON', currency: 'cash', price: 75000, color: '#FF0000', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF0000', secondaryColor: '#111111' },
   { id: 'neon_voltage', name: 'NEON VOLTAGE', currency: 'cash', price: 100000, color: '#FFFF00', glow: 25, width: 8, shape: 'gradient', primaryColor: '#FFFF00', secondaryColor: '#0000FF' },
+  
+  // --- סקיני הגרדיאנט החדשים בשילוב צבעים ---
+  { id: 'synthwave', name: 'SYNTHWAVE', currency: 'cash', price: 150000, color: '#FF00FF', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF00FF', secondaryColor: '#00FFFF' },
+  { id: 'toxic_spill', name: 'TOXIC SPILL', currency: 'cash', price: 200000, color: '#39FF14', glow: 25, width: 8, shape: 'gradient', primaryColor: '#39FF14', secondaryColor: '#8A2BE2' },
+  { id: 'blood_orange', name: 'BLOOD ORANGE', currency: 'cash', price: 250000, color: '#FF4500', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF4500', secondaryColor: '#FF0000' },
 
   { id: 'ruby', name: 'BLOOD RUBY', currency: 'diamond', price: 100, color: '#E0115F', glow: 15, width: 6, shape: 'spiked' },
   { id: 'matrix', name: 'THE MATRIX', currency: 'diamond', price: 200, color: '#00FF41', glow: 20, width: 7, shape: 'standard' },
   { id: 'onyx', name: 'ONYX SPIKE', currency: 'diamond', price: 350, color: '#000000', glow: 25, width: 8, shape: 'spiked' }, 
-  // עדכנו את צורות הסקינים לקריפטו לעיצובים החדשים שניצור
   { id: 'binary_code', name: 'BINARY CODE', currency: 'diamond', price: 400, color: '#00FF41', glow: 15, width: 5, shape: 'binary' },
-  { id: 'hash_chain', name: 'HASH CHAIN', currency: 'diamond', price: 800, color: '#F7931A', glow: 20, width: 8, shape: 'chain' },
   { id: 'quantum', name: 'QUANTUM RIFT', currency: 'diamond', price: 500, color: '#007FFF', glow: 25, width: 7, shape: 'lightning' },
+  { id: 'hash_chain', name: 'HASH CHAIN', currency: 'diamond', price: 800, color: '#F7931A', glow: 20, width: 8, shape: 'chain' },
   { id: 'reaper', name: 'SOUL REAPER', currency: 'diamond', price: 1000, color: '#4B0082', glow: 35, width: 9, shape: 'spiked' },
   { id: 'dragon_spike', name: 'DRAGON TOOTH', currency: 'diamond', price: 2500, color: '#FF0000', glow: 35, width: 12, shape: 'spiked' },
   { id: 'divine', name: 'DIVINE ENTITY', currency: 'diamond', price: 6000, color: '#FFFFFF', glow: 60, width: 15, shape: 'lightning' },
@@ -82,14 +86,12 @@ export const WORLDS: World[] = [
 ];
 
 export const POWER_UPS: PowerUp[] = [
-  // מסודר מהזול ליקר לפי מטבעות
   { id: 'time_freeze', name: 'TIME FREEZE', desc: 'Slows pointer for 3 seconds.', price: 2500, currency: 'cash', color: '#00FFFF' },
   { id: 'smart_shield', name: 'SMART SHIELD', desc: 'Blocks 1 miss. Keeps combo alive.', price: 5000, currency: 'cash', color: '#00FF66' },
   { id: 'precision_focus', name: 'PRECISION FOCUS', desc: 'Double hit-zone size for 5 taps.', price: 15, currency: 'diamond', color: '#FFCC00' },
 ];
 
 export const MISSIONS: Mission[] = [
-  // --- משימות מזומן (מסודר מהנמוך לגבוה) ---
   { id: 'm_intro_1', title: 'GETTING WARM', desc: 'Reach x2 Multiplier', type: 'multiplier', target: 2, rewardType: 'cash', rewardValue: 250 },
   { id: 'm_easy_1', title: 'FIRST STEPS', desc: 'Reach a Combo of 5', type: 'combo', target: 5, rewardType: 'cash', rewardValue: 500 },
   { id: 'm_intro_2', title: 'STEADY HANDS', desc: 'Reach a Combo of 10', type: 'combo', target: 10, rewardType: 'cash', rewardValue: 800 },
@@ -103,7 +105,6 @@ export const MISSIONS: Mission[] = [
   { id: 'm_new_2', title: 'DEEP POCKETS', desc: 'Accumulate $250,000 in Bank', type: 'bank', target: 250000, rewardType: 'cash', rewardValue: 25000 },
   { id: 'm_god_1', title: 'LEGENDARY', desc: 'Reach x64 Multiplier', type: 'multiplier', target: 64, rewardType: 'cash', rewardValue: 50000 },
 
-  // --- משימות יהלומים (מסודר מהנמוך לגבוה) ---
   { id: 'm_easy_3', title: 'PIGGY BANK', desc: 'Accumulate $1,000 in Bank', type: 'bank', target: 1000, rewardType: 'diamond', rewardValue: 5 },
   { id: 'm_med_1', title: 'ROOKIE HACKER', desc: 'Reach a Combo of 15', type: 'combo', target: 15, rewardType: 'diamond', rewardValue: 15 },
   { id: 'm_med_3', title: 'SAVINGS ACCOUNT', desc: 'Accumulate $10,000 in Bank', type: 'bank', target: 10000, rewardType: 'diamond', rewardValue: 30 }, 

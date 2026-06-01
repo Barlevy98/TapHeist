@@ -30,8 +30,10 @@ export default function ShopScreen() {
   });
 
   const [errorModal, setErrorModal] = useState({ visible: false, missingAmount: 0, currency: '' });
-  const [unlockCelebration, setUnlockCelebration] = useState<{ visible: boolean; name: string }>({
-    visible: false, name: '',
+  
+  // הסטייט עודכן כדי לתמוך בסוגי מודאלים שונים
+  const [unlockCelebration, setUnlockCelebration] = useState<{ visible: boolean; name: string; type: string; id: string }>({
+    visible: false, name: '', type: '', id: ''
   });
 
   const nextUnlock = getNextUnlock(bank, diamonds, unlockedSkins, unlockedWorlds);
@@ -68,7 +70,6 @@ export default function ShopScreen() {
     const isWorld = type === 'world';
     const isPowerUp = type === 'powerup';
     
-    // ציוד פריטים שכבר נקנו (ללא Auto-Equip ברכישה ראשונית)
     if (isSkin && unlockedSkins.includes(item.id)) {
       setEquippedSkin(item.id);
       await SecureStore.setItemAsync('vault_equipped_skin', item.id);
@@ -104,18 +105,24 @@ export default function ShopScreen() {
         setUnlockedSkins(newUnlocked);
         SecureStore.setItemAsync('vault_unlocked_skins', JSON.stringify(newUnlocked));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // מודאל שדורש לחיצה
+        setUnlockCelebration({ visible: true, name: item.name, type: 'skin', id: item.id });
       } else if (isWorld) {
         const newUnlocked = [...unlockedWorlds, item.id];
         setUnlockedWorlds(newUnlocked);
         SecureStore.setItemAsync('vault_unlocked_worlds', JSON.stringify(newUnlocked));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // מודאל שדורש לחיצה
+        setUnlockCelebration({ visible: true, name: item.name, type: 'world', id: item.id });
       } else if (isPowerUp) {
         const newVal = await addPowerUp(item.id, 1);
         setInventory(prev => ({ ...prev, [item.id]: newVal }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        // המודאל הקופץ מופיע אך ורק ברכישת בוסטים
-        setUnlockCelebration({ visible: true, name: item.name });
-        setTimeout(() => setUnlockCelebration({ visible: false, name: '' }), 2000);
+        // מודאל מהיר שנעלם לבד
+        setUnlockCelebration({ visible: true, name: item.name, type: 'powerup', id: item.id });
+        setTimeout(() => {
+          setUnlockCelebration(prev => prev.type === 'powerup' ? { ...prev, visible: false } : prev);
+        }, 1500);
       }
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -250,11 +257,37 @@ export default function ShopScreen() {
           </TouchableOpacity>
         </View>
 
-        {unlockCelebration.visible && (
+        {/* --- מודאל רכישת סקין / עולם (עם כפתור Equip) --- */}
+        {unlockCelebration.visible && unlockCelebration.type !== 'powerup' && (
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { borderColor: '#00FF66' }]}>
-              <Text style={[styles.modalTitle, { color: '#00FF66' }]}>ACQUIRED</Text>
+              <Text style={[styles.modalTitle, { color: '#00FF66' }]}>UNLOCKED</Text>
               <Text style={styles.modalText}>{unlockCelebration.name} is now in your arsenal.</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (unlockCelebration.type === 'skin') {
+                    setEquippedSkin(unlockCelebration.id);
+                    SecureStore.setItemAsync('vault_equipped_skin', unlockCelebration.id);
+                  } else {
+                    setEquippedWorld(unlockCelebration.id);
+                    SecureStore.setItemAsync('vault_equipped_world', unlockCelebration.id);
+                  }
+                  setUnlockCelebration({ visible: false, name: '', type: '', id: '' });
+                }}
+                style={[styles.modalButton, { backgroundColor: '#00FF66', marginTop: 15 }]}
+              >
+                <Text style={[styles.modalButtonText, { color: '#0A0A0A' }]}>EQUIP & HACK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* --- מודאל רכישת בוסט (נעלם אוטומטית) --- */}
+        {unlockCelebration.visible && unlockCelebration.type === 'powerup' && (
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 20 }]}>
+              <Text style={[styles.modalTitle, { color: '#00FF66', fontSize: 20, marginBottom: 5 }]}>ACQUIRED</Text>
+              <Text style={styles.modalText}>{unlockCelebration.name} added to inventory.</Text>
             </View>
           </View>
         )}
