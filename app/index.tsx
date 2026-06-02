@@ -71,6 +71,10 @@ export default function GameScreen() {
   const [isFrozen, setIsFrozen] = useState(false);
   const isFrozenRef = useRef(false);
 
+  // --- סטייט למנגנון התיק החדש (Arsenal) ---
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const inventoryProgress = useSharedValue(0);
+
   const currentZoneSize = focusTapsLeft > 0 ? ZONE_SIZE * 2 : ZONE_SIZE;
 
   const [targetAngle, setTargetAngle] = useState(0);
@@ -295,6 +299,21 @@ export default function GameScreen() {
     }
   };
 
+  // --- פונקציות התיק החדשות ---
+  const toggleInventory = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const nextState = !isInventoryOpen;
+    setIsInventoryOpen(nextState);
+    inventoryProgress.value = withTiming(nextState ? 1 : 0, { duration: 350, easing: Easing.out(Easing.exp) });
+  };
+
+  const closeInventory = () => {
+    if (isInventoryOpen) {
+      setIsInventoryOpen(false);
+      inventoryProgress.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.exp) });
+    }
+  };
+
   const startGame = async () => {
     if (introStep !== null && introStep < 3) return;
     cancelAnimation(rotation);
@@ -317,6 +336,7 @@ export default function GameScreen() {
     cancelAnimation(freezeScale); freezeScale.value = 1;
     cancelAnimation(focusScale); focusScale.value = 1;
 
+    closeInventory();
     targetOpacity.value = 1;
 
     setGameState('PLAYING');
@@ -325,9 +345,7 @@ export default function GameScreen() {
   };
 
   const startRotation = (duration: number, dir: number) => {
-    // --- התיקון! מבטל אנימציות קודמות לפני שיגור אנימציה חדשה ---
     cancelAnimation(rotation);
-    
     const currentVal = rotation.value;
     rotation.value = withRepeat(
       withTiming(currentVal + 360 * dir, { duration, easing: Easing.linear }),
@@ -341,6 +359,7 @@ export default function GameScreen() {
       setInventory(prev => ({ ...prev, smart_shield: prev.smart_shield - 1 }));
       await addPowerUp('smart_shield', -1);
       setIsShieldActive(true);
+      closeInventory();
       shieldScale.value = withRepeat(withSequence(withTiming(1.15, {duration: 500}), withTiming(1, {duration: 500})), -1, true);
     }
   };
@@ -353,6 +372,7 @@ export default function GameScreen() {
       
       setIsFrozen(true);
       isFrozenRef.current = true;
+      closeInventory();
       freezeScale.value = withRepeat(withSequence(withTiming(1.15, {duration: 500}), withTiming(1, {duration: 500})), -1, true);
 
       startRotation(getSpeedDuration(combo, true), direction);
@@ -371,12 +391,14 @@ export default function GameScreen() {
       setInventory(prev => ({ ...prev, precision_focus: prev.precision_focus - 1 }));
       await addPowerUp('precision_focus', -1);
       setFocusTapsLeft(5); 
+      closeInventory();
       focusScale.value = withRepeat(withSequence(withTiming(1.15, {duration: 500}), withTiming(1, {duration: 500})), -1, true);
     }
   };
 
   const enterRiskMode = async () => {
     cancelAnimation(rotation);
+    closeInventory();
     const riskSeen = await SecureStore.getItemAsync(STORAGE_KEYS.riskTutorial);
     setShowRiskTutorial(riskSeen !== 'true');
     setGameState('RISK');
@@ -423,6 +445,7 @@ export default function GameScreen() {
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
     
+    closeInventory();
     targetOpacity.value = 1; 
     setGameState('GAMEOVER');
     const claimable = await countClaimableMissions();
@@ -433,6 +456,7 @@ export default function GameScreen() {
     if (gameState === 'START' || gameState === 'CASHED_OUT') { await startGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
     if (gameState !== 'PLAYING') return;
+    if (isInventoryOpen) { closeInventory(); return; } // סגירת התיק אם לחצו על המסך
 
     const currentRawAngle = rotation.value;
     const normalizedCurrentAngle = ((currentRawAngle % 360) + 360) % 360;
@@ -523,6 +547,23 @@ export default function GameScreen() {
   const freezeAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: freezeScale.value }] }));
   const focusAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: focusScale.value }] }));
 
+  // --- אנימציות של פריטי התיק (מגיחים החוצה) ---
+  const bagItem1Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: -70 * inventoryProgress.value }, { scale: 0.5 + 0.5 * inventoryProgress.value }],
+    opacity: inventoryProgress.value,
+    position: 'absolute',
+  }));
+  const bagItem2Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: -140 * inventoryProgress.value }, { scale: 0.5 + 0.5 * inventoryProgress.value }],
+    opacity: inventoryProgress.value,
+    position: 'absolute',
+  }));
+  const bagItem3Style = useAnimatedStyle(() => ({
+    transform: [{ translateY: -210 * inventoryProgress.value }, { scale: 0.5 + 0.5 * inventoryProgress.value }],
+    opacity: inventoryProgress.value,
+    position: 'absolute',
+  }));
+
   const radius = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDasharray = `${(currentZoneSize / 360) * circumference} ${circumference}`;
@@ -556,6 +597,35 @@ export default function GameScreen() {
             </View>
           )}
         </View>
+
+        {/* --- תצוגת חיווי עליונה (HUD) לבוסטים פעילים --- */}
+        {gameState === 'PLAYING' && (
+          <View style={styles.activeBoostsHud}>
+            {isShieldActive && (
+              <Animated.View style={[styles.miniBoostIcon, { borderColor: '#00FF66', shadowColor: '#00FF66' }, shieldAnimStyle]}>
+                <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00FF66" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </Svg>
+              </Animated.View>
+            )}
+            {isFrozen && (
+              <Animated.View style={[styles.miniBoostIcon, { borderColor: '#00FFFF', shadowColor: '#00FFFF' }, freezeAnimStyle]}>
+                <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00FFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Polygon points="12 2 22 8 22 16 12 22 2 16 2 8" />
+                  <Path d="M12 7v5l3 3" />
+                </Svg>
+              </Animated.View>
+            )}
+            {focusTapsLeft > 0 && (
+              <Animated.View style={[styles.miniBoostIcon, { borderColor: '#FFCC00', shadowColor: '#FFCC00', flexDirection: 'row' }, focusAnimStyle]}>
+                <Svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M12 8v8M8 12h8" />
+                </Svg>
+                <Text style={{ color: '#FFCC00', fontSize: 10, fontWeight: 'bold', marginLeft: 4 }}>{focusTapsLeft}</Text>
+              </Animated.View>
+            )}
+          </View>
+        )}
 
         {gameState === 'PLAYING' && combo > 0 && (
           <View style={styles.comboHeader}>
@@ -636,40 +706,65 @@ export default function GameScreen() {
                   <Polygon points="20,86 26,90 26,98 20,105 14,98 14,90" fill="#000" opacity="0.5" />
                 </Svg>
               )}
-              
             </Animated.View>
           </View>
         </Pressable>
 
+        {/* --- ארסנל הבוסטים החדש (תיק נפתח) --- */}
         {gameState === 'PLAYING' && (
-          <View style={styles.tacticalOverlay}>
-            <Animated.View style={[shieldAnimStyle, { zIndex: isShieldActive ? 10 : 1 }]}>
-              <TouchableOpacity style={[styles.tacticalBtn, isShieldActive && { borderColor: '#00FF66', backgroundColor: 'rgba(0,255,102,0.15)' }, inventory.smart_shield === 0 && !isShieldActive && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
-                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isShieldActive ? "#00FF66" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <View style={styles.arsenalContainer} pointerEvents="box-none">
+            
+            {/* פריט 3: Focus */}
+            <Animated.View style={[styles.tacticalBtnWrapper, bagItem3Style]} pointerEvents={isInventoryOpen ? "auto" : "none"}>
+              <TouchableOpacity style={[styles.tacticalBtn, inventory.precision_focus === 0 && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
+                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M12 8v8M8 12h8" />
                 </Svg>
-                <Text style={[styles.powerCount, isShieldActive && { color: '#00FF66' }]}>{isShieldActive ? 'ACTIVE' : inventory.smart_shield}</Text>
+                <Text style={[styles.powerCount, { color: '#FFCC00' }]}>{inventory.precision_focus}</Text>
               </TouchableOpacity>
             </Animated.View>
 
-            <Animated.View style={[freezeAnimStyle, { zIndex: isFrozen ? 10 : 1 }]}>
-              <TouchableOpacity style={[styles.tacticalBtn, isFrozen && { borderColor: '#00FFFF', backgroundColor: 'rgba(0,255,255,0.15)' }, inventory.time_freeze === 0 && !isFrozen && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
-                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isFrozen ? "#00FFFF" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            {/* פריט 2: Freeze */}
+            <Animated.View style={[styles.tacticalBtnWrapper, bagItem2Style]} pointerEvents={isInventoryOpen ? "auto" : "none"}>
+              <TouchableOpacity style={[styles.tacticalBtn, inventory.time_freeze === 0 && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
+                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00FFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <Polygon points="12 2 22 8 22 16 12 22 2 16 2 8" />
                   <Path d="M12 7v5l3 3" />
                 </Svg>
-                <Text style={[styles.powerCount, isFrozen && { color: '#00FFFF' }]}>{isFrozen ? 'ACTIVE' : inventory.time_freeze}</Text>
+                <Text style={[styles.powerCount, { color: '#00FFFF' }]}>{inventory.time_freeze}</Text>
               </TouchableOpacity>
             </Animated.View>
 
-            <Animated.View style={[focusAnimStyle, { zIndex: focusTapsLeft > 0 ? 10 : 1 }]}>
-              <TouchableOpacity style={[styles.tacticalBtn, focusTapsLeft > 0 && { borderColor: '#FFCC00', backgroundColor: 'rgba(255,204,0,0.15)' }, inventory.precision_focus === 0 && focusTapsLeft === 0 && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
-                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={focusTapsLeft > 0 ? "#FFCC00" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M12 8v8M8 12h8" />
+            {/* פריט 1: Shield */}
+            <Animated.View style={[styles.tacticalBtnWrapper, bagItem1Style]} pointerEvents={isInventoryOpen ? "auto" : "none"}>
+              <TouchableOpacity style={[styles.tacticalBtn, inventory.smart_shield === 0 && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
+                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00FF66" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </Svg>
-                <Text style={[styles.powerCount, focusTapsLeft > 0 && { color: '#FFCC00' }]}>{focusTapsLeft > 0 ? `${focusTapsLeft} TAPS` : inventory.precision_focus}</Text>
+                <Text style={[styles.powerCount, { color: '#00FF66' }]}>{inventory.smart_shield}</Text>
               </TouchableOpacity>
             </Animated.View>
+
+            {/* כפתור התיק הראשי (Arsenal Trigger) */}
+            <TouchableOpacity onPress={toggleInventory} style={[styles.bagButton, isInventoryOpen && { borderColor: '#00FF66', shadowColor: '#00FF66' }]}>
+              <Svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={isInventoryOpen ? "#00FF66" : "#FFF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {isInventoryOpen ? (
+                  <>
+                    <Path d="M18 6L6 18" />
+                    <Path d="M6 6l12 12" />
+                  </>
+                ) : (
+                  <>
+                    <Rect x="3" y="8" width="18" height="12" rx="2" ry="2" />
+                    <Path d="M16 8V6a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+                    <Path d="M12 12v4" />
+                    <Path d="M10 14h4" />
+                  </>
+                )}
+              </Svg>
+              {!isInventoryOpen && <Text style={styles.bagText}>ARSENAL</Text>}
+            </TouchableOpacity>
+
           </View>
         )}
 
@@ -792,31 +887,70 @@ const styles = StyleSheet.create({
   pointerContainer: { position: 'absolute', width: CIRCLE_SIZE, height: CIRCLE_SIZE, alignItems: 'center' },
   pointer: { height: CIRCLE_SIZE / 2, borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
   
-  tacticalOverlay: { 
-    flexDirection: 'column', 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    gap: 15, 
+  // --- עיצוב מנגנון התיק החדש (Arsenal) הממוקם למטה בפינה ---
+  arsenalContainer: { 
     position: 'absolute', 
-    right: 15,
-    top: '40%',
-    zIndex: 15,
+    bottom: 30, 
+    right: 30, 
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    zIndex: 100,
   },
+  bagButton: {
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    backgroundColor: 'rgba(10,10,15,0.95)', 
+    borderWidth: 1.5, 
+    borderColor: '#444', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    zIndex: 10,
+  },
+  bagText: { color: '#AAA', fontSize: 8, fontWeight: '900', marginTop: 2, letterSpacing: 1 },
+  tacticalBtnWrapper: { alignItems: 'center', justifyContent: 'center' },
   tacticalBtn: { 
-    backgroundColor: 'rgba(10,10,15,0.85)', 
+    backgroundColor: 'rgba(15,15,20,0.95)', 
     paddingVertical: 10, 
     paddingHorizontal: 8,
-    borderRadius: 12, 
+    borderRadius: 14, 
     borderWidth: 1.5, 
-    borderColor: 'rgba(255,255,255,0.15)', 
+    borderColor: 'rgba(255,255,255,0.2)', 
     alignItems: 'center', 
-    minWidth: 60,
+    minWidth: 55,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.8,
     shadowRadius: 6,
   },
-  powerCount: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 4 },
+  powerCount: { fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 4 },
+  
+  // --- HUD עילי להצגת בוסטים פעילים לאחר שהתיק נסגר ---
+  activeBoostsHud: {
+    position: 'absolute',
+    top: 110,
+    right: 30,
+    alignItems: 'flex-end',
+    gap: 10,
+    zIndex: 15,
+  },
+  miniBoostIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,10,15,0.85)',
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  // ------------------------------------------------------------------------
 
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
