@@ -325,6 +325,9 @@ export default function GameScreen() {
   };
 
   const startRotation = (duration: number, dir: number) => {
+    // --- התיקון! מבטל אנימציות קודמות לפני שיגור אנימציה חדשה ---
+    cancelAnimation(rotation);
+    
     const currentVal = rotation.value;
     rotation.value = withRepeat(
       withTiming(currentVal + 360 * dir, { duration, easing: Easing.linear }),
@@ -352,7 +355,6 @@ export default function GameScreen() {
       isFrozenRef.current = true;
       freezeScale.value = withRepeat(withSequence(withTiming(1.15, {duration: 500}), withTiming(1, {duration: 500})), -1, true);
 
-      cancelAnimation(rotation);
       startRotation(getSpeedDuration(combo, true), direction);
 
       setTimeout(() => {
@@ -387,7 +389,6 @@ export default function GameScreen() {
     updateAndPersistBank(score);
     await incrementTotalHeists();
     
-    // --- שמירת הסטטיסטיקות החדשות (CASH OUT) ---
     updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
     
@@ -419,7 +420,6 @@ export default function GameScreen() {
     updateAndPersistBank(calculatedPrize);
     await incrementTotalHeists();
     
-    // --- שמירת הסטטיסטיקות החדשות (GAME OVER - 25% פרס תנחומים) ---
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
     
@@ -645,7 +645,7 @@ export default function GameScreen() {
           <View style={styles.tacticalOverlay}>
             <Animated.View style={[shieldAnimStyle, { zIndex: isShieldActive ? 10 : 1 }]}>
               <TouchableOpacity style={[styles.tacticalBtn, isShieldActive && { borderColor: '#00FF66', backgroundColor: 'rgba(0,255,102,0.15)' }, inventory.smart_shield === 0 && !isShieldActive && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={isShieldActive ? "#00FF66" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isShieldActive ? "#00FF66" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </Svg>
                 <Text style={[styles.powerCount, isShieldActive && { color: '#00FF66' }]}>{isShieldActive ? 'ACTIVE' : inventory.smart_shield}</Text>
@@ -654,7 +654,7 @@ export default function GameScreen() {
 
             <Animated.View style={[freezeAnimStyle, { zIndex: isFrozen ? 10 : 1 }]}>
               <TouchableOpacity style={[styles.tacticalBtn, isFrozen && { borderColor: '#00FFFF', backgroundColor: 'rgba(0,255,255,0.15)' }, inventory.time_freeze === 0 && !isFrozen && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={isFrozen ? "#00FFFF" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isFrozen ? "#00FFFF" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <Polygon points="12 2 22 8 22 16 12 22 2 16 2 8" />
                   <Path d="M12 7v5l3 3" />
                 </Svg>
@@ -664,7 +664,7 @@ export default function GameScreen() {
 
             <Animated.View style={[focusAnimStyle, { zIndex: focusTapsLeft > 0 ? 10 : 1 }]}>
               <TouchableOpacity style={[styles.tacticalBtn, focusTapsLeft > 0 && { borderColor: '#FFCC00', backgroundColor: 'rgba(255,204,0,0.15)' }, inventory.precision_focus === 0 && focusTapsLeft === 0 && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={focusTapsLeft > 0 ? "#FFCC00" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={focusTapsLeft > 0 ? "#FFCC00" : "#FFF"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <Path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M12 8v8M8 12h8" />
                 </Svg>
                 <Text style={[styles.powerCount, focusTapsLeft > 0 && { color: '#FFCC00' }]}>{focusTapsLeft > 0 ? `${focusTapsLeft} TAPS` : inventory.precision_focus}</Text>
@@ -793,31 +793,31 @@ const styles = StyleSheet.create({
   pointer: { height: CIRCLE_SIZE / 2, borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
   
   tacticalOverlay: { 
-    flexDirection: 'row', 
+    flexDirection: 'column', 
     justifyContent: 'center', 
-    gap: 20, 
+    alignItems: 'center',
+    gap: 15, 
     position: 'absolute', 
-    bottom: 125, 
-    width: '100%',
-    paddingHorizontal: 20,
+    right: 15,
+    top: '40%',
     zIndex: 15,
   },
   tacticalBtn: { 
     backgroundColor: 'rgba(10,10,15,0.85)', 
-    paddingVertical: 14, 
-    paddingHorizontal: 18,
-    borderRadius: 16, 
+    paddingVertical: 10, 
+    paddingHorizontal: 8,
+    borderRadius: 12, 
     borderWidth: 1.5, 
     borderColor: 'rgba(255,255,255,0.15)', 
     alignItems: 'center', 
-    minWidth: 80,
+    minWidth: 60,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.8,
-    shadowRadius: 8,
+    shadowRadius: 6,
   },
-  powerCount: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1, marginTop: 6 },
-  
+  powerCount: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 4 },
+
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
   hookText: { color: '#666', fontSize: 12, marginBottom: 25, textAlign: 'center', paddingHorizontal: 24 },

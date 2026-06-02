@@ -1,15 +1,26 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
+// --- ייבוא כלי הפרסומות ---
+import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
+
 import { SKINS, WORLDS, POWER_UPS, Skin, World, PowerUp } from '../gamedata';
 import { getNextUnlock, getPowerUpInventory, addPowerUp } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
+
+const adUnitId = __DEV__ 
+  ? TestIds.REWARDED 
+  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : TestIds.REWARDED); // חשוב: לעדכן ID של אנדרואיד בעתיד
+
+const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
+  requestNonPersonalizedAdsOnly: false,
+});
 
 export default function ShopScreen() {
   const router = useRouter();
@@ -30,11 +41,52 @@ export default function ShopScreen() {
   });
 
   const [errorModal, setErrorModal] = useState({ visible: false, missingAmount: 0, currency: '' });
-  
-  // הסטייט עודכן כדי לתמוך בסוגי מודאלים שונים
   const [unlockCelebration, setUnlockCelebration] = useState<{ visible: boolean; name: string; type: string; id: string }>({
     visible: false, name: '', type: '', id: ''
   });
+
+  // --- סטייט ומאזינים לפרסומת ---
+  const [adLoaded, setAdLoaded] = useState(false);
+  const [pendingRewardId, setPendingRewardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+      setAdLoaded(true);
+    });
+    
+    const unsubscribeEarned = rewardedAd.addAdEventListener(
+      RewardedAdEventType.EARNED_REWARD,
+      async () => {
+        if (pendingRewardId) {
+          const powerUpName = POWER_UPS.find(p => p.id === pendingRewardId)?.name || '';
+          const newVal = await addPowerUp(pendingRewardId, 1);
+          setInventory(prev => ({ ...prev, [pendingRewardId]: newVal }));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          
+          setUnlockCelebration({ visible: true, name: powerUpName, type: 'powerup', id: pendingRewardId });
+          setTimeout(() => {
+            setUnlockCelebration(prev => prev.type === 'powerup' ? { ...prev, visible: false } : prev);
+          }, 1500);
+          
+          setPendingRewardId(null);
+        }
+      }
+    );
+
+    const unsubscribeClosed = rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
+      setAdLoaded(false);
+      setPendingRewardId(null);
+      rewardedAd.load(); 
+    });
+
+    rewardedAd.load();
+
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeEarned();
+      unsubscribeClosed();
+    };
+  }, [pendingRewardId]);
 
   const nextUnlock = getNextUnlock(bank, diamonds, unlockedSkins, unlockedWorlds);
 
@@ -105,20 +157,17 @@ export default function ShopScreen() {
         setUnlockedSkins(newUnlocked);
         SecureStore.setItemAsync('vault_unlocked_skins', JSON.stringify(newUnlocked));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        // מודאל שדורש לחיצה
         setUnlockCelebration({ visible: true, name: item.name, type: 'skin', id: item.id });
       } else if (isWorld) {
         const newUnlocked = [...unlockedWorlds, item.id];
         setUnlockedWorlds(newUnlocked);
         SecureStore.setItemAsync('vault_unlocked_worlds', JSON.stringify(newUnlocked));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        // מודאל שדורש לחיצה
         setUnlockCelebration({ visible: true, name: item.name, type: 'world', id: item.id });
       } else if (isPowerUp) {
         const newVal = await addPowerUp(item.id, 1);
         setInventory(prev => ({ ...prev, [item.id]: newVal }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        // מודאל מהיר שנעלם לבד
         setUnlockCelebration({ visible: true, name: item.name, type: 'powerup', id: item.id });
         setTimeout(() => {
           setUnlockCelebration(prev => prev.type === 'powerup' ? { ...prev, visible: false } : prev);
@@ -129,6 +178,15 @@ export default function ShopScreen() {
       const currentFunds = item.currency === 'cash' ? bank : diamonds;
       const missing = item.price - currentFunds;
       setErrorModal({ visible: true, missingAmount: missing, currency: item.currency });
+    }
+  };
+
+  // --- פונקציית צפייה בפרסומת ---
+  const handleWatchAdForPowerUp = (powerUpId: string) => {
+    if (adLoaded) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setPendingRewardId(powerUpId);
+      rewardedAd.show();
     }
   };
 
@@ -229,23 +287,38 @@ export default function ShopScreen() {
           {activeTab === 'powerups' && POWER_UPS.map((power) => {
             const currentStock = inventory[power.id] || 0;
             return (
-              <TouchableOpacity key={power.id} style={styles.shopItem} onPress={() => handlePurchase(power, 'powerup')}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', width: '70%' }}>
-                  <View style={[styles.colorPreviewContainer, { shadowColor: power.color }]}>
-                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: power.color }} />
+              <View key={power.id} style={[styles.shopItem, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', width: '65%' }}>
+                    <View style={[styles.colorPreviewContainer, { shadowColor: power.color }]}>
+                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: power.color }} />
+                    </View>
+                    <View style={{ paddingRight: 5 }}>
+                      <Text style={styles.itemName}>{power.name}</Text>
+                      <Text style={[styles.itemSpecs, { lineHeight: 14 }]}>{power.desc}</Text>
+                      {currentStock > 0 && <Text style={{ color: '#00FF66', fontSize: 10, marginTop: 4, fontWeight: 'bold' }}>IN STOCK: {currentStock}</Text>}
+                    </View>
                   </View>
-                  <View style={{ paddingRight: 10 }}>
-                    <Text style={styles.itemName}>{power.name}</Text>
-                    <Text style={[styles.itemSpecs, { lineHeight: 14 }]}>{power.desc}</Text>
-                    {currentStock > 0 && <Text style={{ color: '#00FF66', fontSize: 10, marginTop: 4, fontWeight: 'bold' }}>IN STOCK: {currentStock}</Text>}
-                  </View>
+                  
+                  <TouchableOpacity onPress={() => handlePurchase(power, 'powerup')} style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 }}>
+                    <Text style={[styles.itemStatus, { color: power.currency === 'diamond' ? '#00FFFF' : '#00FF66', fontSize: 14 }]}>
+                      {power.currency === 'diamond' ? `💎 ${power.price.toLocaleString()}` : `$${power.price.toLocaleString()}`}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-                <View>
-                   <Text style={[styles.itemStatus, { color: power.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>
-                     {power.currency === 'diamond' ? `💎 ${power.price.toLocaleString()}` : `$${power.price.toLocaleString()}`}
-                   </Text>
-                </View>
-              </TouchableOpacity>
+
+                {/* --- כפתור צפייה בפרסומת שמחליף קנייה --- */}
+                {adLoaded && (
+                  <TouchableOpacity 
+                    onPress={() => handleWatchAdForPowerUp(power.id)} 
+                    style={{ backgroundColor: '#FF007F', paddingVertical: 10, borderRadius: 12, alignItems: 'center', marginTop: 5 }}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12, letterSpacing: 1 }}>WATCH AD FOR +1</Text>
+                  </TouchableOpacity>
+                )}
+
+              </View>
             );
           })}
 
@@ -257,7 +330,6 @@ export default function ShopScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* --- מודאל רכישת סקין / עולם (עם כפתור Equip) --- */}
         {unlockCelebration.visible && unlockCelebration.type !== 'powerup' && (
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { borderColor: '#00FF66' }]}>
@@ -282,7 +354,6 @@ export default function ShopScreen() {
           </View>
         )}
 
-        {/* --- מודאל רכישת בוסט (נעלם אוטומטית) --- */}
         {unlockCelebration.visible && unlockCelebration.type === 'powerup' && (
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 20 }]}>

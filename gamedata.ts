@@ -49,7 +49,7 @@ export const SKINS: Skin[] = [
   { id: 'phantom', name: 'PHANTOM GREY', currency: 'cash', price: 2000, color: '#2C2C2E', glow: 10, width: 5, shape: 'standard' }, 
   { id: 'plasma', name: 'PLASMA SHOCK', currency: 'cash', price: 2500, color: '#FF9900', glow: 18, width: 6, shape: 'lightning' },
   { id: 'emerald', name: 'EMERALD DAGGER', currency: 'cash', price: 5000, color: '#00FF88', glow: 15, width: 6, shape: 'spiked' },
-  { id: 'titan_white', name: 'TITAN WHITE', currency: 'cash', price: 8500, color: '#FFFFFF', glow: 15, width: 12, shape: 'standard' }, // --- הלבן הרחב החדש ---
+  { id: 'titan_white', name: 'TITAN WHITE', currency: 'cash', price: 8500, color: '#FFFFFF', glow: 15, width: 12, shape: 'standard' }, 
   { id: 'void', name: 'VOID MATTER', currency: 'cash', price: 10000, color: '#8A2BE2', glow: 25, width: 8, shape: 'lightning' },
   { id: 'obsidian', name: 'OBSIDIAN BLACK', currency: 'cash', price: 15000, color: '#0A0A0A', glow: 15, width: 7, shape: 'standard' }, 
   { id: 'glitch', name: 'GLITCH CORE', currency: 'cash', price: 25000, color: '#FF0055', glow: 30, width: 7, shape: 'standard' },
@@ -57,7 +57,6 @@ export const SKINS: Skin[] = [
   { id: 'cyber_demon', name: 'CYBER DEMON', currency: 'cash', price: 75000, color: '#FF0000', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF0000', secondaryColor: '#111111' },
   { id: 'neon_voltage', name: 'NEON VOLTAGE', currency: 'cash', price: 100000, color: '#FFFF00', glow: 25, width: 8, shape: 'gradient', primaryColor: '#FFFF00', secondaryColor: '#0000FF' },
   
-  // --- סקיני הגרדיאנט החדשים בשילוב צבעים ---
   { id: 'synthwave', name: 'SYNTHWAVE', currency: 'cash', price: 150000, color: '#FF00FF', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF00FF', secondaryColor: '#00FFFF' },
   { id: 'toxic_spill', name: 'TOXIC SPILL', currency: 'cash', price: 200000, color: '#39FF14', glow: 25, width: 8, shape: 'gradient', primaryColor: '#39FF14', secondaryColor: '#8A2BE2' },
   { id: 'blood_orange', name: 'BLOOD ORANGE', currency: 'cash', price: 250000, color: '#FF4500', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF4500', secondaryColor: '#FF0000' },
@@ -86,8 +85,9 @@ export const WORLDS: World[] = [
 ];
 
 export const POWER_UPS: PowerUp[] = [
-  { id: 'time_freeze', name: 'TIME FREEZE', desc: 'Slows pointer for 3 seconds.', price: 2500, currency: 'cash', color: '#00FFFF' },
-  { id: 'smart_shield', name: 'SMART SHIELD', desc: 'Blocks 1 miss. Keeps combo alive.', price: 5000, currency: 'cash', color: '#00FF66' },
+  // מחירים מעודכנים וגבוהים כדי ליצור כלכלה מאוזנת
+  { id: 'time_freeze', name: 'TIME FREEZE', desc: 'Slows pointer for 3 seconds.', price: 15000, currency: 'cash', color: '#00FFFF' },
+  { id: 'smart_shield', name: 'SMART SHIELD', desc: 'Blocks 1 miss. Keeps combo alive.', price: 50000, currency: 'cash', color: '#00FF66' },
   { id: 'precision_focus', name: 'PRECISION FOCUS', desc: 'Double hit-zone size for 5 taps.', price: 15, currency: 'diamond', color: '#FFCC00' },
 ];
 
