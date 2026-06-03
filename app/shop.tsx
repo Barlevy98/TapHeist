@@ -4,9 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, Rect, Path, Polygon } from 'react-native-svg';
 
-// --- ייבוא כלי הפרסומות ---
 import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
 import { SKINS, WORLDS, POWER_UPS, Skin, World, PowerUp } from '../gamedata';
@@ -14,9 +13,10 @@ import { getNextUnlock, getPowerUpInventory, addPowerUp } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
 
+// --- תיקון אנדרואיד: מפתח אמיתי לפרודקשן ---
 const adUnitId = __DEV__ 
   ? TestIds.REWARDED 
-  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : TestIds.REWARDED); // חשוב: לעדכן ID של אנדרואיד בעתיד
+  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : 'ca-app-pub-9244809721385064/5943204821'); 
 
 const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
   requestNonPersonalizedAdsOnly: false,
@@ -45,11 +45,15 @@ export default function ShopScreen() {
     visible: false, name: '', type: '', id: ''
   });
 
-  // --- סטייט ומאזינים לפרסומת ---
-  const [adLoaded, setAdLoaded] = useState(false);
+  // --- ליטוש UX: סטייט למודאל הדרכת בוסטים ראשוני ---
+  const [powerUpTutorialVisible, setPowerUpTutorialVisible] = useState(false);
+
+  const [adLoaded, setAdLoaded] = useState(rewardedAd.loaded);
   const [pendingRewardId, setPendingRewardId] = useState<string | null>(null);
 
   useEffect(() => {
+    setAdLoaded(rewardedAd.loaded);
+
     const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
       setAdLoaded(true);
     });
@@ -63,6 +67,9 @@ export default function ShopScreen() {
           setInventory(prev => ({ ...prev, [pendingRewardId]: newVal }));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           
+          // בדיקת הדרכה
+          checkPowerUpTutorial();
+
           setUnlockCelebration({ visible: true, name: powerUpName, type: 'powerup', id: pendingRewardId });
           setTimeout(() => {
             setUnlockCelebration(prev => prev.type === 'powerup' ? { ...prev, visible: false } : prev);
@@ -79,7 +86,9 @@ export default function ShopScreen() {
       rewardedAd.load(); 
     });
 
-    rewardedAd.load();
+    if (!rewardedAd.loaded) {
+      rewardedAd.load();
+    }
 
     return () => {
       unsubscribeLoaded();
@@ -115,6 +124,15 @@ export default function ShopScreen() {
       const inv = await getPowerUpInventory();
       setInventory(inv);
     } catch (e) { console.log('Error loading data', e); }
+  };
+
+  // פונקציית בדיקה והפעלה של הדרכת בוסטים
+  const checkPowerUpTutorial = async () => {
+    const hasSeen = await SecureStore.getItemAsync('has_seen_powerup_tutorial');
+    if (hasSeen !== 'true') {
+      setPowerUpTutorialVisible(true);
+      await SecureStore.setItemAsync('has_seen_powerup_tutorial', 'true');
+    }
   };
 
   const handlePurchase = async (item: Skin | World | PowerUp, type: 'skin' | 'world' | 'powerup') => {
@@ -168,6 +186,10 @@ export default function ShopScreen() {
         const newVal = await addPowerUp(item.id, 1);
         setInventory(prev => ({ ...prev, [item.id]: newVal }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
+        // טריגר להדרכת בוסטים ראשונה
+        checkPowerUpTutorial();
+
         setUnlockCelebration({ visible: true, name: item.name, type: 'powerup', id: item.id });
         setTimeout(() => {
           setUnlockCelebration(prev => prev.type === 'powerup' ? { ...prev, visible: false } : prev);
@@ -181,7 +203,6 @@ export default function ShopScreen() {
     }
   };
 
-  // --- פונקציית צפייה בפרסומת ---
   const handleWatchAdForPowerUp = (powerUpId: string) => {
     if (adLoaded) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -308,7 +329,6 @@ export default function ShopScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* --- כפתור צפייה בפרסומת שמחליף קנייה --- */}
                 {adLoaded && (
                   <TouchableOpacity 
                     onPress={() => handleWatchAdForPowerUp(power.id)} 
@@ -329,6 +349,27 @@ export default function ShopScreen() {
             <Text style={styles.closeShopText}>BACK TO MENU</Text>
           </TouchableOpacity>
         </View>
+
+        {/* --- ליטוש UX: מודאל הדרכת בוסטים / ארסנל ראשוני --- */}
+        {powerUpTutorialVisible && (
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { borderColor: '#00FFFF', padding: 25 }]}>
+              <View style={{ marginBottom: 15 }}>
+                <Svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00FFFF" strokeWidth="2">
+                  <Rect x="3" y="8" width="18" height="12" rx="2" ry="2" />
+                  <Path d="M16 8V6a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+                </Svg>
+              </View>
+              <Text style={[styles.modalTitle, { color: '#00FFFF', fontSize: 20 }]}>TACTICAL ARSENAL UNLOCKED</Text>
+              <Text style={[styles.modalText, { lineHeight: 22, fontSize: 14, color: '#DDD' }]}>
+                Your purchased items are stored in your tactical gear bag. During a live vault heist, tap the compact "ARSENAL" bag icon in the lower right corner to pop open your consumables instantly!
+              </Text>
+              <TouchableOpacity onPress={() => setPowerUpTutorialVisible(false)} style={[styles.modalButton, { backgroundColor: '#00FFFF', marginTop: 15 }]}>
+                <Text style={[styles.modalButtonText, { color: '#000' }]}>UNDERSTOOD</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {unlockCelebration.visible && unlockCelebration.type !== 'powerup' && (
           <View style={styles.modalOverlay}>

@@ -4,11 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { MISSIONS, Mission } from '../gamedata';
-import { updateMaxBank } from '../gameHelpers';
+import { MISSIONS, Mission, WEEKLY_MISSIONS, WeeklyMission } from '../gamedata';
+import { updateMaxBank, loadWeeklyMissionsData, STORAGE_KEYS } from '../gameHelpers';
 
 export default function MissionsScreen() {
   const router = useRouter();
+  
+  // טאב פעיל: OBJECTIVES (רגיל) או WEEKLY (שבועי)
+  const [activeTab, setActiveTab] = useState<'core' | 'weekly'>('core');
   
   const [bank, setBank] = useState(0);
   const [diamonds, setDiamonds] = useState(0);
@@ -17,9 +20,14 @@ export default function MissionsScreen() {
   const [stats, setStats] = useState({ combo: 0, multiplier: 1, bank: 0 });
   const [claimedMissions, setClaimedMissions] = useState<string[]>([]);
 
+  // סטייט נתונים שבועיים
+  const [weeklyMissions, setWeeklyMissions] = useState<WeeklyMission[]>([]);
+  const [weeklyClaimed, setWeeklyClaimed] = useState<string[]>([]);
+  const [weeklyHeistsCount, setWeeklyHeistsCount] = useState(0);
+  const [weeklyCountdown, setWeeklyCountdown] = useState('');
+
   const [notification, setNotification] = useState({ visible: false, title: '', subtitle: '' });
 
-  // שימוש ב-useFocusEffect לרענון הנתונים בכל פעם שחוזרים למסך המשימות
   useFocusEffect(
     useCallback(() => {
       loadMissionsData();
@@ -47,15 +55,29 @@ export default function MissionsScreen() {
         multiplier: maxMult ? parseInt(maxMult) : 1,
         bank: maxBank ? parseInt(maxBank) : 0,
       });
+
+      // טעינת נתונים שבועיים דרך מנגנון העזר האוטומטי
+      const wData = await loadWeeklyMissionsData();
+      setWeeklyMissions(wData.missions);
+      setWeeklyClaimed(wData.claimed);
+      setWeeklyHeistsCount(wData.weeklyHeists);
+      setWeeklyCountdown(wData.countdown);
+
     } catch (e) { console.log('Error loading data', e); }
   };
 
-  const handleClaim = async (mission: Mission) => {
+  const handleClaim = async (mission: Mission | WeeklyMission, isWeekly = false) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    const newClaimed = [...claimedMissions, mission.id];
-    setClaimedMissions(newClaimed);
-    await SecureStore.setItemAsync('vault_claimed_missions', JSON.stringify(newClaimed));
+    if (isWeekly) {
+      const newWeeklyClaimed = [...weeklyClaimed, mission.id];
+      setWeeklyClaimed(newWeeklyClaimed);
+      await SecureStore.setItemAsync(STORAGE_KEYS.weeklyClaimed, JSON.stringify(newWeeklyClaimed));
+    } else {
+      const newClaimed = [...claimedMissions, mission.id];
+      setClaimedMissions(newClaimed);
+      await SecureStore.setItemAsync('vault_claimed_missions', JSON.stringify(newClaimed));
+    }
 
     let notifTitle = '';
     let notifSubtitle = '';
@@ -76,8 +98,9 @@ export default function MissionsScreen() {
       notifSubtitle = `+$${mission.rewardValue.toLocaleString()} added to your bank`;
       
     } else if (mission.rewardType === 'skin') {
-      if (!unlockedSkins.includes(mission.rewardValue)) {
-        const newUnlocked = [...unlockedSkins, mission.rewardValue];
+      const skinVal = (mission as Mission).rewardValue;
+      if (!unlockedSkins.includes(skinVal)) {
+        const newUnlocked = [...unlockedSkins, skinVal];
         setUnlockedSkins(newUnlocked);
         await SecureStore.setItemAsync('vault_unlocked_skins', JSON.stringify(newUnlocked));
       }
@@ -100,6 +123,14 @@ export default function MissionsScreen() {
     return { current, target: mission.target, isCompleted: current >= mission.target };
   };
 
+  const checkWeeklyProgress = (mission: WeeklyMission) => {
+    let current = 0;
+    if (mission.type === 'combo') current = stats.combo;
+    if (mission.type === 'multiplier') current = stats.multiplier;
+    if (mission.type === 'weekly_heists') current = weeklyHeistsCount;
+    return { current, target: mission.target, isCompleted: current >= mission.target };
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -110,11 +141,29 @@ export default function MissionsScreen() {
             <Text style={styles.diamondText}>💎 {diamonds.toLocaleString()}</Text>
           </View>
         </View>
+        
         <Text style={styles.title}>OBJECTIVES</Text>
         <Text style={styles.subtitle}>Complete hacks to earn rewards</Text>
+
+        {/* --- גרסה 1.3: טאבים להחלפה בין משימות רגילות לשבועיות --- */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'core' && styles.tabButtonActive]} onPress={() => setActiveTab('core')}>
+            <Text style={[styles.tabText, activeTab === 'core' && styles.tabTextActive]}>CORE MISSIONS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabButton, activeTab === 'weekly' && styles.tabButtonActive]} onPress={() => setActiveTab('weekly')}>
+            <Text style={[styles.tabText, activeTab === 'weekly' && styles.tabTextActive]}>WEEKLY CHALLENGES</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* חיווי טיימר לאחור שמופיע רק בטאב השבועי */}
+        {activeTab === 'weekly' && (
+          <Text style={styles.countdownText}>🔒 CYCLES RESET IN: {weeklyCountdown.toUpperCase()}</Text>
+        )}
         
         <ScrollView style={{ width: '100%', marginTop: 10 }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 100 }}>
-          {MISSIONS.map((mission) => {
+          
+          {/* תצוגת משימות רגילות */}
+          {activeTab === 'core' && MISSIONS.map((mission) => {
             const progress = checkProgress(mission);
             const isClaimed = claimedMissions.includes(mission.id);
             const canClaim = progress.isCompleted && !isClaimed;
@@ -130,7 +179,7 @@ export default function MissionsScreen() {
                   {isClaimed ? (
                     <Text style={styles.claimedText}>CLAIMED</Text>
                   ) : canClaim ? (
-                    <TouchableOpacity style={styles.claimButton} onPress={() => handleClaim(mission)}>
+                    <TouchableOpacity style={styles.claimButton} onPress={() => handleClaim(mission, false)}>
                       <Text style={styles.claimButtonText}>CLAIM</Text>
                     </TouchableOpacity>
                   ) : (
@@ -145,6 +194,40 @@ export default function MissionsScreen() {
               </View>
             );
           })}
+
+          {/* תצוגת משימות שבועיות */}
+          {activeTab === 'weekly' && weeklyMissions.map((mission) => {
+            const progress = checkWeeklyProgress(mission);
+            const isClaimed = weeklyClaimed.includes(mission.id);
+            const canClaim = progress.isCompleted && !isClaimed;
+            
+            return (
+              <View key={mission.id} style={[styles.missionCard, { borderColor: '#FF007F' }, canClaim && styles.missionCardReady]}>
+                <View style={styles.missionInfo}>
+                  <Text style={[styles.missionTitle, { color: '#FF007F' }]}>{mission.title}</Text>
+                  <Text style={styles.missionDesc}>{mission.desc}</Text>
+                  <Text style={styles.progressText}>Weekly Progress: {Math.min(progress.current, progress.target).toLocaleString()} / {progress.target.toLocaleString()}</Text>
+                </View>
+                <View style={styles.rewardSection}>
+                  {isClaimed ? (
+                    <Text style={styles.claimedText}>CLAIMED</Text>
+                  ) : canClaim ? (
+                    <TouchableOpacity style={[styles.claimButton, { backgroundColor: '#FF007F', shadowColor: '#FF007F' }]} onPress={() => handleClaim(mission, true)}>
+                      <Text style={[styles.claimButtonText, { color: '#FFF' }]}>CLAIM</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.lockedReward}>
+                      <Text style={styles.rewardLabel}>REWARD</Text>
+                      <Text style={[styles.rewardValue, { color: mission.rewardType === 'diamond' ? '#00FFFF' : '#00FF66' }]}>
+                        {mission.rewardType === 'diamond' ? `💎 ${mission.rewardValue.toLocaleString()}` : `$${mission.rewardValue.toLocaleString()}`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+
         </ScrollView>
         <View style={styles.footer}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
@@ -175,20 +258,28 @@ const styles = StyleSheet.create({
   bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900' },
   diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', marginTop: 5 },
   title: { fontSize: 32, color: '#FFF', fontWeight: '900', letterSpacing: 2, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 20 },
-  missionCard: { width: '90%', backgroundColor: '#111', borderWidth: 1, borderColor: '#333', borderRadius: 15, padding: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  missionCardReady: { borderColor: '#FFCC00', backgroundColor: 'rgba(255, 204, 0, 0.05)' },
+  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 15 },
+  
+  tabContainer: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 15 },
+  tabButton: { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1, borderColor: '#222', backgroundColor: '#111' },
+  tabButtonActive: { backgroundColor: '#FFCC00', borderColor: '#FFCC00' },
+  tabText: { color: '#666', fontWeight: 'bold', fontSize: 11 },
+  tabTextActive: { color: '#000', fontWeight: '900' },
+  countdownText: { color: '#FF007F', fontSize: 12, fontWeight: '900', letterSpacing: 1.5, textAlign: 'center', marginBottom: 10 },
+
+  missionCard: { width: '90%', backgroundColor: '#111', borderWidth: 1, borderColor: '#222', padding: 20, borderRadius: 15, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  missionCardReady: { borderColor: '#00FF66', backgroundColor: 'rgba(0, 255, 102, 0.03)' },
   missionInfo: { flex: 1, paddingRight: 15 },
-  missionTitle: { color: '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: 1, marginBottom: 5 },
-  missionDesc: { color: '#AAA', fontSize: 13, marginBottom: 10 },
-  progressText: { color: '#666', fontSize: 12, fontWeight: 'bold' },
+  missionTitle: { color: '#FFF', fontSize: 17, fontWeight: '900', letterSpacing: 1, marginBottom: 5 },
+  missionDesc: { color: '#AAA', fontSize: 12, marginBottom: 10, lineHeight: 16 },
+  progressText: { color: '#555', fontSize: 11, fontWeight: 'bold' },
   rewardSection: { alignItems: 'center', justifyContent: 'center', minWidth: 80 },
   lockedReward: { alignItems: 'center' },
-  rewardLabel: { color: '#666', fontSize: 10, fontWeight: 'bold', letterSpacing: 1, marginBottom: 3 },
-  rewardValue: { fontSize: 16, fontWeight: '900' },
-  claimButton: { backgroundColor: '#FFCC00', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, shadowColor: '#FFCC00', shadowOpacity: 0.4, shadowRadius: 8 },
-  claimButtonText: { color: '#000', fontWeight: '900', fontSize: 14 },
-  claimedText: { color: '#333', fontWeight: '900', fontSize: 14, letterSpacing: 1 },
+  rewardLabel: { color: '#444', fontSize: 9, fontWeight: 'bold', letterSpacing: 1, marginBottom: 3 },
+  rewardValue: { fontSize: 15, fontWeight: '900' },
+  claimButton: { backgroundColor: '#00FF66', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, shadowColor: '#00FF66', shadowOpacity: 0.4, shadowRadius: 8 },
+  claimButtonText: { color: '#000', fontWeight: '900', fontSize: 13 },
+  claimedText: { color: '#222', fontWeight: '900', fontSize: 13, letterSpacing: 1 },
   footer: { position: 'absolute', bottom: 30, width: '100%', alignItems: 'center' },
   closeButton: { backgroundColor: '#FFF', paddingVertical: 15, width: '90%', borderRadius: 30, alignItems: 'center', shadowColor: '#FFF', shadowOpacity: 0.2, shadowRadius: 10 },
   closeButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16, letterSpacing: 1 },

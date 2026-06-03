@@ -32,6 +32,17 @@ export interface Mission {
   rewardValue: any;
 }
 
+// --- ממשק משימות שבועיות חדש ---
+export interface WeeklyMission {
+  id: string;
+  title: string;
+  desc: string;
+  type: 'combo' | 'multiplier' | 'weekly_heists';
+  target: number;
+  rewardType: 'cash' | 'diamond';
+  rewardValue: number;
+}
+
 export interface PowerUp {
   id: string;
   name: string;
@@ -85,10 +96,17 @@ export const WORLDS: World[] = [
 ];
 
 export const POWER_UPS: PowerUp[] = [
-  // מחירים מעודכנים וגבוהים כדי ליצור כלכלה מאוזנת
   { id: 'time_freeze', name: 'TIME FREEZE', desc: 'Slows pointer for 3 seconds.', price: 15000, currency: 'cash', color: '#00FFFF' },
   { id: 'smart_shield', name: 'SMART SHIELD', desc: 'Blocks 1 miss. Keeps combo alive.', price: 50000, currency: 'cash', color: '#00FF66' },
   { id: 'precision_focus', name: 'PRECISION FOCUS', desc: 'Double hit-zone size for 5 taps.', price: 15, currency: 'diamond', color: '#FFCC00' },
+];
+
+// --- מאגר האתגרים השבועיים החדש לגרסה 1.3 ---
+export const WEEKLY_MISSIONS: WeeklyMission[] = [
+  { id: 'w_combo_25', title: 'WEEKLY SPEEDRUN', desc: 'Reach a Combo of 25 this week', type: 'combo', target: 25, rewardType: 'cash', rewardValue: 12000 },
+  { id: 'w_mult_16', title: 'EMERGENCY LEVERAGE', desc: 'Reach a x16 Multiplier this week', type: 'multiplier', target: 16, rewardType: 'diamond', rewardValue: 100 },
+  { id: 'w_heists_10', title: 'THE GHOST CREW', desc: 'Complete 10 successful heists this week', type: 'weekly_heists', target: 10, rewardType: 'cash', rewardValue: 20000 },
+  { id: 'w_combo_35', title: 'CRITICAL OVERRIDE', desc: 'Reach a Combo of 35 this week', type: 'combo', target: 35, rewardType: 'diamond', rewardValue: 200 },
 ];
 
 export const MISSIONS: Mission[] = [

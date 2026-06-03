@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
-import { MISSIONS, Mission, SKINS, WORLDS, Skin, World } from './gamedata';
+import { MISSIONS, Mission, SKINS, WORLDS, Skin, World, WEEKLY_MISSIONS } from './gamedata';
 
 export const STORAGE_KEYS = {
   bank: 'vault_bank',
@@ -12,9 +12,9 @@ export const STORAGE_KEYS = {
   claimedMissions: 'vault_claimed_missions',
   maxCombo: 'stat_maxCombo',
   maxMultiplier: 'stat_maxMultiplier',
-  maxBank: 'stat_maxBank', // שמרנו כדי לא לדרוס נתונים קיימים
-  bestRunCash: 'stat_best_run_cash', // --- חדש ---
-  bestRunDiamonds: 'stat_best_run_diamonds', // --- חדש ---
+  maxBank: 'stat_maxBank', 
+  bestRunCash: 'stat_best_run_cash', 
+  bestRunDiamonds: 'stat_best_run_diamonds', 
   totalHeists: 'stat_total_heists',
   diamondTutorial: 'has_seen_tutorial',
   coreTutorial: 'has_seen_core_tutorial',
@@ -25,6 +25,12 @@ export const STORAGE_KEYS = {
   inv_smart_shield: 'inv_smart_shield',
   inv_time_freeze: 'inv_time_freeze',
   inv_precision_focus: 'inv_precision_focus',
+  
+  // --- מפתחות שבועיים לגרסה 1.3 ---
+  weeklyExpiry: 'weekly_missions_expiry_time',
+  weeklyActiveIds: 'weekly_active_missions_ids',
+  weeklyClaimed: 'weekly_missions_claimed_ids',
+  weeklyHeistsCount: 'weekly_stat_heists_count',
 } as const;
 
 export async function getPowerUpInventory(): Promise<Record<string, number>> {
@@ -45,6 +51,58 @@ export async function addPowerUp(id: string, amount: number = 1): Promise<number
   const newVal = current + amount;
   await SecureStore.setItemAsync(STORAGE_KEYS[key], newVal.toString());
   return newVal;
+}
+
+// --- לוגיקת סנכרון ורוטציה של משימות שבועיות ללא שרת ---
+export function getNextSundayMidnight(): number {
+  const d = new Date();
+  const day = d.getDay(); 
+  const daysToSunday = day === 0 ? 7 : 7 - day;
+  const nextSunday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + daysToSunday, 23, 59, 59, 999);
+  return nextSunday.getTime();
+}
+
+export async function loadWeeklyMissionsData() {
+  const now = Date.now();
+  const expiryStr = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyExpiry);
+  let expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
+
+  if (now > expiry || !expiryStr) {
+    expiry = getNextSundayMidnight();
+    await SecureStore.setItemAsync(STORAGE_KEYS.weeklyExpiry, expiry.toString());
+    await SecureStore.setItemAsync(STORAGE_KEYS.weeklyClaimed, JSON.stringify([]));
+    await SecureStore.setItemAsync(STORAGE_KEYS.weeklyHeistsCount, '0');
+
+    const shuffled = [...WEEKLY_MISSIONS].sort(() => 0.5 - Math.random());
+    const pickedIds = shuffled.slice(0, 3).map(m => m.id);
+    await SecureStore.setItemAsync(STORAGE_KEYS.weeklyActiveIds, JSON.stringify(pickedIds));
+  }
+
+  const activeIdsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyActiveIds);
+  const activeIds: string[] = activeIdsRaw ? JSON.parse(activeIdsRaw) : [];
+  const activeMissions = WEEKLY_MISSIONS.filter(m => activeIds.includes(m.id));
+
+  const claimedRaw = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyClaimed);
+  const claimed: string[] = claimedRaw ? JSON.parse(claimedRaw) : [];
+
+  const weeklyHeists = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyHeistsCount);
+
+  const diff = expiry - now;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+
+  return {
+    missions: activeMissions,
+    claimed,
+    weeklyHeists: weeklyHeists ? parseInt(weeklyHeists, 10) : 0,
+    countdown: `${days}d ${hours}h left`,
+  };
+}
+
+export async function incrementWeeklyHeists() {
+  const current = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyHeistsCount);
+  const next = (current ? parseInt(current, 10) : 0) + 1;
+  await SecureStore.setItemAsync(STORAGE_KEYS.weeklyHeistsCount, next.toString());
 }
 
 let hapticsEnabledCache: boolean | null = null;
@@ -145,11 +203,12 @@ export async function incrementTotalHeists() {
 }
 
 export async function countClaimableMissions(): Promise<number> {
-  const [maxCombo, maxMult, maxBank, claimedRaw] = await Promise.all([
+  const [maxCombo, maxMult, maxBank, claimedRaw, weeklyInfo] = await Promise.all([
     SecureStore.getItemAsync(STORAGE_KEYS.maxCombo),
     SecureStore.getItemAsync(STORAGE_KEYS.maxMultiplier),
     SecureStore.getItemAsync(STORAGE_KEYS.maxBank),
     SecureStore.getItemAsync(STORAGE_KEYS.claimedMissions),
+    loadWeeklyMissionsData(),
   ]);
 
   const stats = {
@@ -159,12 +218,24 @@ export async function countClaimableMissions(): Promise<number> {
   };
   const claimed: string[] = claimedRaw ? JSON.parse(claimedRaw) : [];
 
-  return MISSIONS.filter((m) => {
+  let count = MISSIONS.filter((m) => {
     if (claimed.includes(m.id)) return false;
     if (m.type === 'combo') return stats.combo >= m.target;
     if (m.type === 'multiplier') return stats.multiplier >= m.target;
     return stats.bank >= m.target;
   }).length;
+
+  // מוסיפים את המשימות השבועיות שמוכנות לאיסוף לספירת הטאג'
+  weeklyInfo.missions.forEach((wm) => {
+    if (weeklyInfo.claimed.includes(wm.id)) return;
+    let completed = false;
+    if (wm.type === 'combo' && stats.combo >= wm.target) completed = true;
+    if (wm.type === 'multiplier' && stats.multiplier >= wm.target) completed = true;
+    if (wm.type === 'weekly_heists' && weeklyInfo.weeklyHeists >= wm.target) completed = true;
+    if (completed) count += 1;
+  });
+
+  return count;
 }
 
 export type NextUnlock = {
@@ -172,7 +243,7 @@ export type NextUnlock = {
   currency: 'cash' | 'diamond';
   price: number;
   missing: number;
-};
+ };
 
 export function getNextUnlock(
   bank: number,

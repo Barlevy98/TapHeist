@@ -16,6 +16,9 @@ import * as Haptics from 'expo-haptics';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
+// --- גרסה 1.3: ייבוא כלי דירוג חכם של אפל ---
+import * as StoreReview from 'expo-store-review';
+
 import { GradientPointer } from '../components/GradientPointer';
 
 import { SKINS, WORLDS, Skin, World } from '../gamedata';
@@ -31,7 +34,9 @@ import {
   hapticNotification,
   loadHapticsEnabled,
   getPowerUpInventory,
-  addPowerUp
+  addPowerUp,
+  getNextUnlock,
+  incrementWeeklyHeists
 } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
@@ -43,9 +48,10 @@ const FAIL_REWARD_FRACTION = 0.25;
 const DIAMOND_CHANCE = 0.20;
 const NEAR_MISS_MULTIPLIER = 1.35;
 
+// --- תיקון טכני אנדרואיד: החלפת מפתח הטסט במפתח האמיתי שלך ---
 const adUnitId = __DEV__ 
   ? TestIds.REWARDED 
-  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : TestIds.REWARDED);
+  : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : 'ca-app-pub-9244809721385064/5943204821');
 
 const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
   requestNonPersonalizedAdsOnly: false,
@@ -71,7 +77,9 @@ export default function GameScreen() {
   const [isFrozen, setIsFrozen] = useState(false);
   const isFrozenRef = useRef(false);
 
-  // --- סטייט למנגנון התיק החדש (Arsenal) ---
+  // --- ליטוש UX: סטייט ליעד הבא במסך הראשי ---
+  const [mainNextUnlock, setMainNextUnlock] = useState<any>(null);
+
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const inventoryProgress = useSharedValue(0);
 
@@ -171,8 +179,17 @@ export default function GameScreen() {
       const savedWorldId = await SecureStore.getItemAsync(STORAGE_KEYS.equippedWorld);
       const tutSeen = await SecureStore.getItemAsync(STORAGE_KEYS.diamondTutorial);
       const coreSeen = await SecureStore.getItemAsync(STORAGE_KEYS.coreTutorial);
-      if (savedBank) setBank(parseInt(savedBank, 10));
-      if (savedDiamonds) setDiamonds(parseInt(savedDiamonds, 10));
+      
+      const unlockedSkinsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.unlockedSkins);
+      const unlockedWorldsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.unlockedWorlds);
+      
+      const currentBank = savedBank ? parseInt(savedBank, 10) : 0;
+      const currentDiamonds = savedDiamonds ? parseInt(savedDiamonds, 10) : 0;
+      const uSkins = unlockedSkinsRaw ? JSON.parse(unlockedSkinsRaw) : ['white'];
+      const uWorlds = unlockedWorldsRaw ? JSON.parse(unlockedWorldsRaw) : ['darknet'];
+
+      if (savedBank) setBank(currentBank);
+      if (savedDiamonds) setDiamonds(currentDiamonds);
       if (!tutSeen) setHasSeenDiamondTutorial(false);
       setIntroStep(coreSeen === 'true' ? 3 : 0);
 
@@ -184,6 +201,10 @@ export default function GameScreen() {
         const foundWorld = WORLDS.find((w) => w.id === savedWorldId);
         if (foundWorld) setActiveWorld(foundWorld);
       }
+
+      // --- חישוב היעד הבא למסך הבית ---
+      const next = getNextUnlock(currentBank, currentDiamonds, uSkins, uWorlds);
+      setMainNextUnlock(next);
 
       const inv = await getPowerUpInventory();
       setInventory(inv);
@@ -207,6 +228,7 @@ export default function GameScreen() {
   };
 
   const updateAndPersistDiamonds = async (amountToAdd: number) => {
+    setBank((currentBank) => { return currentBank; }); // מונע קריסה מרוץ סטייט
     setDiamonds((currentDiamonds) => {
       const finalDiamondsValue = currentDiamonds + amountToAdd;
       SecureStore.setItemAsync(STORAGE_KEYS.diamonds, finalDiamondsValue.toString());
@@ -299,7 +321,6 @@ export default function GameScreen() {
     }
   };
 
-  // --- פונקציות התיק החדשות ---
   const toggleInventory = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const nextState = !isInventoryOpen;
@@ -411,8 +432,18 @@ export default function GameScreen() {
     updateAndPersistBank(score);
     await incrementTotalHeists();
     
+    // --- גרסה 1.3: הוספת ספירה למשימות השבועיים ---
+    await incrementWeeklyHeists();
+    
     updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
+    
+    // --- גרסה 1.3: הקפצת חלונית דירוג חכמה בשיא רגשי חיובי (מעל 50,000$) ---
+    if (score >= 50000) {
+      if (await StoreReview.hasAction()) {
+        StoreReview.requestReview();
+      }
+    }
     
     setGameState('CASHED_OUT');
     const claimable = await countClaimableMissions();
@@ -441,6 +472,7 @@ export default function GameScreen() {
     setConsolationPrize(calculatedPrize);
     updateAndPersistBank(calculatedPrize);
     await incrementTotalHeists();
+    await incrementWeeklyHeists();
     
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
@@ -456,7 +488,7 @@ export default function GameScreen() {
     if (gameState === 'START' || gameState === 'CASHED_OUT') { await startGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
     if (gameState !== 'PLAYING') return;
-    if (isInventoryOpen) { closeInventory(); return; } // סגירת התיק אם לחצו על המסך
+    if (isInventoryOpen) { closeInventory(); return; }
 
     const currentRawAngle = rotation.value;
     const normalizedCurrentAngle = ((currentRawAngle % 360) + 360) % 360;
@@ -547,7 +579,6 @@ export default function GameScreen() {
   const freezeAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: freezeScale.value }] }));
   const focusAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: focusScale.value }] }));
 
-  // --- אנימציות של פריטי התיק (מגיחים החוצה) ---
   const bagItem1Style = useAnimatedStyle(() => ({
     transform: [{ translateY: -70 * inventoryProgress.value }, { scale: 0.5 + 0.5 * inventoryProgress.value }],
     opacity: inventoryProgress.value,
@@ -598,7 +629,6 @@ export default function GameScreen() {
           )}
         </View>
 
-        {/* --- תצוגת חיווי עליונה (HUD) לבוסטים פעילים --- */}
         {gameState === 'PLAYING' && (
           <View style={styles.activeBoostsHud}>
             {isShieldActive && (
@@ -710,11 +740,8 @@ export default function GameScreen() {
           </View>
         </Pressable>
 
-        {/* --- ארסנל הבוסטים החדש (תיק נפתח) --- */}
         {gameState === 'PLAYING' && (
           <View style={styles.arsenalContainer} pointerEvents="box-none">
-            
-            {/* פריט 3: Focus */}
             <Animated.View style={[styles.tacticalBtnWrapper, bagItem3Style]} pointerEvents={isInventoryOpen ? "auto" : "none"}>
               <TouchableOpacity style={[styles.tacticalBtn, inventory.precision_focus === 0 && { opacity: 0.3 }]} onPress={activateFocus} disabled={inventory.precision_focus === 0 || focusTapsLeft > 0}>
                 <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -724,7 +751,6 @@ export default function GameScreen() {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* פריט 2: Freeze */}
             <Animated.View style={[styles.tacticalBtnWrapper, bagItem2Style]} pointerEvents={isInventoryOpen ? "auto" : "none"}>
               <TouchableOpacity style={[styles.tacticalBtn, inventory.time_freeze === 0 && { opacity: 0.3 }]} onPress={activateFreeze} disabled={inventory.time_freeze === 0 || isFrozen}>
                 <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00FFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -735,7 +761,6 @@ export default function GameScreen() {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* פריט 1: Shield */}
             <Animated.View style={[styles.tacticalBtnWrapper, bagItem1Style]} pointerEvents={isInventoryOpen ? "auto" : "none"}>
               <TouchableOpacity style={[styles.tacticalBtn, inventory.smart_shield === 0 && { opacity: 0.3 }]} onPress={activateShield} disabled={inventory.smart_shield === 0 || isShieldActive}>
                 <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00FF66" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -745,7 +770,6 @@ export default function GameScreen() {
               </TouchableOpacity>
             </Animated.View>
 
-            {/* כפתור התיק הראשי (Arsenal Trigger) */}
             <TouchableOpacity onPress={toggleInventory} style={[styles.bagButton, isInventoryOpen && { borderColor: '#00FF66', shadowColor: '#00FF66' }]}>
               <Svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={isInventoryOpen ? "#00FF66" : "#FFF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {isInventoryOpen ? (
@@ -764,7 +788,6 @@ export default function GameScreen() {
               </Svg>
               {!isInventoryOpen && <Text style={styles.bagText}>ARSENAL</Text>}
             </TouchableOpacity>
-
           </View>
         )}
 
@@ -773,6 +796,14 @@ export default function GameScreen() {
             <View style={{ alignItems: 'center' }}>
               <Text style={[styles.actionText, { color: activeWorld.textPrimary }]}>TAP TO HACK</Text>
               <Text style={styles.hookText}>One tap to crack the vault. Cash out or lose it all.</Text>
+              
+              {/* --- גרסה 1.3: תצוגת היעד הבא מעוצבת ונקייה מתחת להסבר --- */}
+              {mainNextUnlock && (
+                <Text style={styles.mainNextUnlockText}>
+                  NEXT OBJECTIVE: {mainNextUnlock.name} ({mainNextUnlock.currency === 'diamond' ? '💎' : '$'}{mainNextUnlock.missing.toLocaleString()} LEFT)
+                </Text>
+              )}
+
               <View style={styles.menuRow}>
                 <TouchableOpacity onPress={() => router.push('/shop')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}><Text style={styles.menuButtonText}>SHOP</Text></TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/missions')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}><Text style={styles.menuButtonText}>MISSIONS</Text>{missionBadge > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{missionBadge}</Text></View>}</TouchableOpacity>
@@ -887,7 +918,16 @@ const styles = StyleSheet.create({
   pointerContainer: { position: 'absolute', width: CIRCLE_SIZE, height: CIRCLE_SIZE, alignItems: 'center' },
   pointer: { height: CIRCLE_SIZE / 2, borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
   
-  // --- עיצוב מנגנון התיק החדש (Arsenal) הממוקם למטה בפינה ---
+  tacticalOverlay: { 
+    flexDirection: 'column', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    gap: 15, 
+    position: 'absolute', 
+    right: 15,
+    top: '40%',
+    zIndex: 15,
+  },
   arsenalContainer: { 
     position: 'absolute', 
     bottom: 30, 
@@ -929,7 +969,6 @@ const styles = StyleSheet.create({
   },
   powerCount: { fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 4 },
   
-  // --- HUD עילי להצגת בוסטים פעילים לאחר שהתיק נסגר ---
   activeBoostsHud: {
     position: 'absolute',
     top: 110,
@@ -950,11 +989,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 8,
   },
-  // ------------------------------------------------------------------------
 
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
-  hookText: { color: '#666', fontSize: 12, marginBottom: 25, textAlign: 'center', paddingHorizontal: 24 },
+  hookText: { color: '#666', fontSize: 12, marginBottom: 5, textAlign: 'center', paddingHorizontal: 24 },
+  mainNextUnlockText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', marginBottom: 20, letterSpacing: 1, textTransform: 'uppercase' },
   menuRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 16 },
   menuButton: { backgroundColor: 'transparent', borderWidth: 1, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', position: 'relative' },
   menuButtonText: { color: '#FFCC00', fontWeight: 'bold', fontSize: 13, letterSpacing: 1 },
