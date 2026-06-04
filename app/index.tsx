@@ -356,12 +356,21 @@ export default function GameScreen() {
     setTimeout(() => startRotation(getSpeedDuration(0), 1), 0);
   };
 
+  // --- תיקון מלא: RACE CONDITION RESOLUTION ---
   const startRotation = (duration: number, dir: number) => {
     cancelAnimation(rotation);
-    rotation.value = withRepeat(
-      withTiming(rotation.value + 360 * dir, { duration, easing: Easing.linear }),
-      -1, false
-    );
+    
+    // נירמול הזווית כדי שלא נגיע למספרים עצומים שיקריסו את מנוע החישוב
+    const currentAngle = rotation.value % 360;
+    rotation.value = currentAngle;
+    
+    // הפעלת האנימציה בפריים הבא (requestAnimationFrame) מונעת את ההתנגשות
+    requestAnimationFrame(() => {
+      rotation.value = withRepeat(
+        withTiming(currentAngle + 360 * dir, { duration, easing: Easing.linear }),
+        -1, false
+      );
+    });
   };
 
   const activateShield = async () => {
@@ -473,7 +482,12 @@ export default function GameScreen() {
     if (gameState !== 'PLAYING') return;
     if (isInventoryOpen) { closeInventory(); return; }
 
+    // --- תיקון מלא: VISUAL DESYNC (SNAP TO TAP) ---
+    // מקפיאים מיד את האנימציה בזווית המדויקת שבה הייתה הלחיצה
     const currentRawAngle = rotation.value;
+    cancelAnimation(rotation);
+    rotation.value = currentRawAngle;
+
     const normalizedCurrentAngle = ((currentRawAngle % 360) + 360) % 360;
     const targetCenter = targetAngle + currentZoneSize / 2;
     let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
@@ -522,7 +536,6 @@ export default function GameScreen() {
       startRotation(getSpeedDuration(newCombo), nextDirection);
     } else {
       await hapticNotification(Haptics.NotificationFeedbackType.Error);
-      cancelAnimation(rotation);
 
       if (isShieldActive) {
         setIsShieldActive(false);
