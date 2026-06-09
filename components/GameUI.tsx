@@ -28,7 +28,13 @@ export default function GameUI({
   advanceIntro,
   dailyModal,
   setDailyModal,
-  handleClaimDaily
+  handleClaimDaily,
+  // --- V1.4 Props ---
+  hackerRank,
+  prestigeMult,
+  prestigeOffer,
+  handlePrestige,
+  isFirewallActive
 }: any) {
   const router = useRouter();
 
@@ -44,9 +50,26 @@ export default function GameUI({
         {gameState === 'START' && (
           <View style={{ alignItems: 'center' }}>
             <Text style={[styles.actionText, { color: activeWorld.textPrimary }]}>TAP TO HACK</Text>
-            <Text style={styles.hookText}>One tap to crack the vault. Cash out or lose it all.</Text>
             
-            {mainNextUnlock && (
+            <Text style={styles.rankText}>
+              RANK: {hackerRank} {prestigeMult > 1 ? `| GHOST x${prestigeMult}` : ''}
+            </Text>
+            
+            {prestigeOffer && (
+              <TouchableOpacity onPress={handlePrestige} style={styles.prestigeButton}>
+                <Text style={styles.prestigeTitle}>💀 GHOST PROTOCOL 💀</Text>
+                <Text style={styles.prestigeDesc}>Burn ${prestigeOffer.cost.toLocaleString()} for permanent x{prestigeOffer.mult} multiplier!</Text>
+              </TouchableOpacity>
+            )}
+
+            {isFirewallActive && !prestigeOffer && (
+              <View style={styles.firewallAlert}>
+                <Text style={styles.firewallAlertText}>🔥 FIREWALL BREACH IMMINENT 🔥</Text>
+                <Text style={styles.firewallAlertSub}>Extreme difficulty. Diamonds guaranteed.</Text>
+              </View>
+            )}
+
+            {mainNextUnlock && !prestigeOffer && !isFirewallActive && (
               <Text style={styles.mainNextUnlockText}>
                 NEXT OBJECTIVE: {mainNextUnlock.name} ({mainNextUnlock.currency === 'diamond' ? '💎' : '$'}{mainNextUnlock.missing.toLocaleString()} LEFT)
               </Text>
@@ -154,7 +177,15 @@ export default function GameUI({
 const styles = StyleSheet.create({
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
-  hookText: { color: '#666', fontSize: 12, marginBottom: 5, textAlign: 'center', paddingHorizontal: 24 },
+  
+  rankText: { color: '#00FF66', fontSize: 13, fontWeight: 'bold', marginBottom: 15, letterSpacing: 1 },
+  prestigeButton: { backgroundColor: 'rgba(255,0,0,0.1)', borderWidth: 1, borderColor: '#FF3B30', padding: 12, borderRadius: 15, marginBottom: 15, alignItems: 'center', width: '85%' },
+  prestigeTitle: { color: '#FF3B30', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  prestigeDesc: { color: '#FFF', fontSize: 11, textAlign: 'center', marginTop: 4 },
+  firewallAlert: { backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: '#FF6600', padding: 10, borderRadius: 12, marginBottom: 15, width: '85%', alignItems: 'center' },
+  firewallAlertText: { color: '#FF6600', fontWeight: '900', fontSize: 14 },
+  firewallAlertSub: { color: '#FFF', fontSize: 10, marginTop: 2 },
+  
   mainNextUnlockText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', marginBottom: 20, letterSpacing: 1, textTransform: 'uppercase' },
   menuRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 16 },
   menuButton: { backgroundColor: 'transparent', borderWidth: 1, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', position: 'relative' },

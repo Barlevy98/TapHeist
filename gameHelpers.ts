@@ -31,6 +31,10 @@ export const STORAGE_KEYS = {
   weeklyActiveIds: 'weekly_active_missions_ids',
   weeklyClaimed: 'weekly_missions_claimed_ids',
   weeklyHeistsCount: 'weekly_stat_heists_count',
+
+  // --- מפתחות גרסה 1.4: Prestige & Firewall ---
+  prestigeMultiplier: 'stat_prestige_mult',
+  gamesSinceFirewall: 'stat_games_firewall',
 } as const;
 
 export async function getPowerUpInventory(): Promise<Record<string, number>> {
@@ -53,7 +57,6 @@ export async function addPowerUp(id: string, amount: number = 1): Promise<number
   return newVal;
 }
 
-// --- לוגיקת סנכרון ורוטציה של משימות שבועיות ללא שרת ---
 export function getNextSundayMidnight(): number {
   const d = new Date();
   const day = d.getDay(); 
@@ -225,7 +228,6 @@ export async function countClaimableMissions(): Promise<number> {
     return stats.bank >= m.target;
   }).length;
 
-  // מוסיפים את המשימות השבועיות שמוכנות לאיסוף לספירת הטאג'
   weeklyInfo.missions.forEach((wm) => {
     if (weeklyInfo.claimed.includes(wm.id)) return;
     let completed = false;
@@ -278,16 +280,34 @@ export function getNextUnlock(
 }
 
 export const CORE_TUTORIAL_STEPS = [
-  {
-    title: 'STEP 1: THE HACK',
-    text: 'Tap when your pointer hits the green zone on the vault ring.',
-  },
-  {
-    title: 'STEP 2: RISK MODE',
-    text: 'Every 10 hits, the system pauses. Cash out your run earnings or Risk It to double your multiplier.',
-  },
-  {
-    title: 'STEP 3: FAILURE COST',
-    text: 'Miss the zone and you lose 75% of this run\'s cash. Only 25% gets scrapped into your bank.',
-  },
+  { title: 'STEP 1: THE HACK', text: 'Tap when your pointer hits the green zone on the vault ring.' },
+  { title: 'STEP 2: RISK MODE', text: 'Every 10 hits, the system pauses. Cash out your run earnings or Risk It to double your multiplier.' },
+  { title: 'STEP 3: FAILURE COST', text: 'Miss the zone and you lose 75% of this run\'s cash. Only 25% gets scrapped into your bank.' },
 ];
+
+// === V1.4: GHOST PROTOCOL (PRESTIGE) & HACKER RANKS ===
+
+export const PRESTIGE_TIERS = [
+  { cost: 10000000, mult: 32 },
+  { cost: 6000000, mult: 16 },
+  { cost: 4000000, mult: 8 },
+  { cost: 2000000, mult: 4 },
+  { cost: 1000000, mult: 2 },
+];
+
+export function getPrestigeOffer(bank: number, currentMult: number) {
+  for (const tier of PRESTIGE_TIERS) {
+    if (bank >= tier.cost && tier.mult > currentMult) {
+      return tier;
+    }
+  }
+  return null;
+}
+
+export function getHackerRank(heists: number, maxCombo: number): string {
+  if (heists >= 1000 || maxCombo >= 60) return 'MASTER PHANTOM';
+  if (heists >= 500 || maxCombo >= 40) return 'CYBER DEMON';
+  if (heists >= 200 || maxCombo >= 25) return 'SYSTEM ADMIN';
+  if (heists >= 50 || maxCombo >= 15) return 'MALWARE DEV';
+  return 'SCRIPT KIDDIE';
+}

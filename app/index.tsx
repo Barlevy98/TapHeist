@@ -16,7 +16,6 @@ import { useFocusEffect } from 'expo-router';
 import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 import * as StoreReview from 'expo-store-review';
 
-// --- הרכיבים הנקיים שלנו ---
 import GameHeader from '../components/GameHeader';
 import TacticalArsenal from '../components/TacticalArsenal';
 import GameUI from '../components/GameUI';
@@ -36,7 +35,9 @@ import {
   getPowerUpInventory,
   addPowerUp,
   getNextUnlock,
-  incrementWeeklyHeists
+  incrementWeeklyHeists,
+  getPrestigeOffer,
+  getHackerRank
 } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
@@ -80,8 +81,6 @@ export default function GameScreen() {
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const inventoryProgress = useSharedValue(0);
 
-  const currentZoneSize = focusTapsLeft > 0 ? ZONE_SIZE * 2 : ZONE_SIZE;
-
   const [targetAngle, setTargetAngle] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isDiamondTarget, setIsDiamondTarget] = useState(false);
@@ -101,8 +100,19 @@ export default function GameScreen() {
   const [hasRevivedThisRun, setHasRevivedThisRun] = useState(false);
   const [pendingRevive, setPendingRevive] = useState(false);
 
-  // === A N I M A T I O N S ===
+  // === V1.4: NEW STATES ===
+  const [lifetimeMaxCombo, setLifetimeMaxCombo] = useState(0);
+  const [totalHeists, setTotalHeists] = useState(0);
+  const [prestigeMult, setPrestigeMult] = useState(1);
+  const [gamesSinceFirewall, setGamesSinceFirewall] = useState(0);
+  const [isFirewallActive, setIsFirewallActive] = useState(false);
 
+  // אזור המטרה משתנה דינאמית אם אנחנו במצב פוקוס או במצב פריצת חומת אש
+  const activeZoneSize = isFirewallActive 
+    ? Math.max(15, ZONE_SIZE * 0.5) 
+    : (focusTapsLeft > 0 ? ZONE_SIZE * 2 : ZONE_SIZE);
+
+  // === A N I M A T I O N S ===
   const shieldScale = useSharedValue(1);
   const freezeScale = useSharedValue(1);
   const focusScale = useSharedValue(1);
@@ -144,7 +154,11 @@ export default function GameScreen() {
     else if (isPoHWorld) { baseDuration = 800; speedStep = 30; minDuration = 250; }
 
     let finalDuration = Math.max(minDuration, baseDuration - currentCombo * speedStep);
+    
+    // מודיפיקציות מהירות מיוחדות
+    if (isFirewallActive) finalDuration *= 0.65; // חומת אש משמעותית מהירה יותר
     if (frozen) finalDuration *= 2.5; 
+    
     return finalDuration;
   };
 
@@ -188,6 +202,12 @@ export default function GameScreen() {
       const unlockedSkinsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.unlockedSkins);
       const unlockedWorldsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.unlockedWorlds);
       
+      // V1.4 Data
+      const savedMaxCombo = await SecureStore.getItemAsync(STORAGE_KEYS.maxCombo);
+      const savedTotalHeists = await SecureStore.getItemAsync(STORAGE_KEYS.totalHeists);
+      const savedPrestigeMult = await SecureStore.getItemAsync(STORAGE_KEYS.prestigeMultiplier);
+      const savedFirewallGames = await SecureStore.getItemAsync(STORAGE_KEYS.gamesSinceFirewall);
+
       const currentBank = savedBank ? parseInt(savedBank, 10) : 0;
       const currentDiamonds = savedDiamonds ? parseInt(savedDiamonds, 10) : 0;
       const uSkins = unlockedSkinsRaw ? JSON.parse(unlockedSkinsRaw) : ['white'];
@@ -206,6 +226,11 @@ export default function GameScreen() {
         const foundWorld = WORLDS.find((w) => w.id === savedWorldId);
         if (foundWorld) setActiveWorld(foundWorld);
       }
+
+      if (savedMaxCombo) setLifetimeMaxCombo(parseInt(savedMaxCombo, 10));
+      if (savedTotalHeists) setTotalHeists(parseInt(savedTotalHeists, 10));
+      if (savedPrestigeMult) setPrestigeMult(parseInt(savedPrestigeMult, 10));
+      if (savedFirewallGames) setGamesSinceFirewall(parseInt(savedFirewallGames, 10));
 
       setMainNextUnlock(getNextUnlock(currentBank, currentDiamonds, uSkins, uWorlds));
       setInventory(await getPowerUpInventory());
@@ -292,11 +317,27 @@ export default function GameScreen() {
     loadSavedData();
   };
 
+  const handlePrestige = async () => {
+    const offer = getPrestigeOffer(bank, prestigeMult);
+    if (!offer) return;
+    
+    await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
+    
+    setBank(0);
+    await SecureStore.setItemAsync(STORAGE_KEYS.bank, '0');
+    
+    setPrestigeMult(offer.mult);
+    await SecureStore.setItemAsync(STORAGE_KEYS.prestigeMultiplier, offer.mult.toString());
+    
+    pulseSuccess();
+  };
+
   const randomizeTarget = () => {
-    const newAngle = Math.floor(Math.random() * (360 - currentZoneSize));
+    const newAngle = Math.floor(Math.random() * (360 - activeZoneSize));
     setTargetAngle(newAngle);
     
-    const isDiamond = activeWorld.id === 'diamond_world' ? true : (Math.random() < DIAMOND_CHANCE);
+    // אם זו פריצת חומת אש - זה תמיד שווה יהלומים (ונצבע בציאן)
+    const isDiamond = isFirewallActive || (activeWorld.id === 'diamond_world' ? true : (Math.random() < DIAMOND_CHANCE));
     setIsDiamondTarget(isDiamond);
 
     if (isDiamond && !hasSeenDiamondTutorial) {
@@ -305,7 +346,7 @@ export default function GameScreen() {
       setHasSeenDiamondTutorial(true);
     }
 
-    if (activeWorld.id === 'zk_vault') {
+    if (activeWorld.id === 'zk_vault' || isFirewallActive) {
       targetOpacity.value = 1;
       targetOpacity.value = withSequence(withTiming(1, { duration: 400 }), withTiming(0, { duration: 250 }));
     } else {
@@ -349,22 +390,35 @@ export default function GameScreen() {
     cancelAnimation(freezeScale); freezeScale.value = 1;
     cancelAnimation(focusScale); focusScale.value = 1;
 
+    // --- מערכת חומת האש (Firewall Breach) ---
+    let currentFirewallCount = gamesSinceFirewall + 1;
+    let triggerFirewall = false;
+    
+    // סיכוי של 10% לפרוץ חומת אש אחרי לפחות 10 משחקים ללא אירוע
+    if (currentFirewallCount >= 10 && Math.random() < 0.10) {
+      triggerFirewall = true;
+      currentFirewallCount = 0;
+    }
+    
+    setGamesSinceFirewall(currentFirewallCount);
+    SecureStore.setItemAsync(STORAGE_KEYS.gamesSinceFirewall, currentFirewallCount.toString());
+    setIsFirewallActive(triggerFirewall);
+
     closeInventory();
     targetOpacity.value = 1;
     setGameState('PLAYING');
-    randomizeTarget();
-    setTimeout(() => startRotation(getSpeedDuration(0), 1), 0);
+    
+    // קוראים ל-randomizeTarget כדי שיקלוט את ה-activeZoneSize החדש (כולל הפיירוול)
+    setTimeout(() => {
+      randomizeTarget();
+      startRotation(getSpeedDuration(0), 1);
+    }, 0);
   };
 
-  // --- תיקון מלא: RACE CONDITION RESOLUTION ---
   const startRotation = (duration: number, dir: number) => {
     cancelAnimation(rotation);
-    
-    // נירמול הזווית כדי שלא נגיע למספרים עצומים שיקריסו את מנוע החישוב
     const currentAngle = rotation.value % 360;
     rotation.value = currentAngle;
-    
-    // הפעלת האנימציה בפריים הבא (requestAnimationFrame) מונעת את ההתנגשות
     requestAnimationFrame(() => {
       rotation.value = withRepeat(
         withTiming(currentAngle + 360 * dir, { duration, easing: Easing.linear }),
@@ -429,7 +483,8 @@ export default function GameScreen() {
     await hapticNotification(Haptics.NotificationFeedbackType.Success);
     pulseSuccess();
     updateAndPersistBank(score);
-    await incrementTotalHeists();
+    const newHeists = await incrementTotalHeists();
+    setTotalHeists(newHeists);
     await incrementWeeklyHeists();
     
     updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
@@ -464,7 +519,8 @@ export default function GameScreen() {
     const calculatedPrize = Math.floor(score * FAIL_REWARD_FRACTION);
     setConsolationPrize(calculatedPrize);
     updateAndPersistBank(calculatedPrize);
-    await incrementTotalHeists();
+    const newHeists = await incrementTotalHeists();
+    setTotalHeists(newHeists);
     await incrementWeeklyHeists();
     
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
@@ -482,19 +538,17 @@ export default function GameScreen() {
     if (gameState !== 'PLAYING') return;
     if (isInventoryOpen) { closeInventory(); return; }
 
-    // --- תיקון מלא: VISUAL DESYNC (SNAP TO TAP) ---
-    // מקפיאים מיד את האנימציה בזווית המדויקת שבה הייתה הלחיצה
     const currentRawAngle = rotation.value;
     cancelAnimation(rotation);
     rotation.value = currentRawAngle;
 
     const normalizedCurrentAngle = ((currentRawAngle % 360) + 360) % 360;
-    const targetCenter = targetAngle + currentZoneSize / 2;
+    const targetCenter = targetAngle + activeZoneSize / 2;
     let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
     if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
-    const isHit = angleDiff <= currentZoneSize / 2;
-    const isNearMiss = !isHit && angleDiff <= (currentZoneSize / 2) * NEAR_MISS_MULTIPLIER;
+    const isHit = angleDiff <= activeZoneSize / 2;
+    const isNearMiss = !isHit && angleDiff <= (activeZoneSize / 2) * NEAR_MISS_MULTIPLIER;
 
     if (isHit) {
       if (focusTapsLeft > 0) {
@@ -505,10 +559,17 @@ export default function GameScreen() {
       const newCombo = combo + 1;
       setCombo(newCombo);
       setRunMaxCombo((c) => Math.max(c, newCombo));
+      setLifetimeMaxCombo((c) => Math.max(c, newCombo));
       updateStatsRecord(STORAGE_KEYS.maxCombo, newCombo);
       flashHit();
 
-      if (isDiamondTarget) {
+      if (isFirewallActive) {
+        // פרס מיוחד לחומת אש
+        await hapticNotification(Haptics.NotificationFeedbackType.Success);
+        updateAndPersistDiamonds(3);
+        setRunDiamondsEarned((d) => d + 3);
+        playScoreAnimation(3);
+      } else if (isDiamondTarget) {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
         updateAndPersistDiamonds(1);
         setRunDiamondsEarned((d) => d + 1);
@@ -516,7 +577,8 @@ export default function GameScreen() {
       } else {
         await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
         const worldMultiplier = activeWorld.id === 'poh_vault' ? 5 : 1;
-        const reward = BASE_REWARD * multiplier * worldMultiplier;
+        // הכפלת נקודות גם לפי כוח ה-Prestige!
+        const reward = BASE_REWARD * multiplier * worldMultiplier * prestigeMult;
         setScore((s) => s + reward);
         playScoreAnimation(reward);
       }
@@ -564,7 +626,7 @@ export default function GameScreen() {
 
   const radius = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = `${(currentZoneSize / 360) * circumference} ${circumference}`;
+  const strokeDasharray = `${(activeZoneSize / 360) * circumference} ${circumference}`;
   const strokeDashoffset = -(targetAngle / 360) * circumference;
   const isDirectionWarning = gameState === 'PLAYING' && combo > 0 && (combo + 1) % 5 === 0;
   const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL';
@@ -653,6 +715,12 @@ export default function GameScreen() {
           dailyModal={dailyModal}
           setDailyModal={setDailyModal}
           handleClaimDaily={handleClaimDaily}
+          
+          hackerRank={getHackerRank(totalHeists, lifetimeMaxCombo)}
+          prestigeMult={prestigeMult}
+          prestigeOffer={getPrestigeOffer(bank, prestigeMult)}
+          handlePrestige={handlePrestige}
+          isFirewallActive={isFirewallActive}
         />
 
       </Animated.View>
