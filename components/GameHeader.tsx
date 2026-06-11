@@ -22,7 +22,8 @@ export default function GameHeader({
   focusAnimStyle,
   combo,
   isDirectionWarning,
-  nearMissText
+  nearMissText,
+  runDiamondsEarned // <-- V1.4: הוספנו את זה כדי להציג בעולם היהלומים
 }: any) {
   return (
     <>
@@ -36,7 +37,12 @@ export default function GameHeader({
         {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
           <View style={styles.scoreContainer}>
             <View>
-              <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>${score.toLocaleString()}</Text>
+              {/* V1.4: אם אנחנו בעולם היהלומים, מציגים את מד היהלומים ולא דולרים */}
+              {activeWorld.id === 'diamond_world' ? (
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>💎 {runDiamondsEarned}</Text>
+              ) : (
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>${score.toLocaleString()}</Text>
+              )}
               <Animated.Text style={[styles.floatingScoreText, floatingScoreStyle, { color: isDiamondTarget ? '#00FFFF' : '#00FF66' }]}>
                 +{lastRewardEarned}{isDiamondTarget ? '💎' : '$'}
               </Animated.Text>

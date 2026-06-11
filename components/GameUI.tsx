@@ -29,7 +29,6 @@ export default function GameUI({
   dailyModal,
   setDailyModal,
   handleClaimDaily,
-  // --- V1.4 Props ---
   hackerRank,
   prestigeMult,
   prestigeOffer,
@@ -128,7 +127,12 @@ export default function GameUI({
         {gameState === 'CASHED_OUT' && (
           <Animated.View style={[styles.gameOverContainer, successPulseStyle]}>
             <Text style={styles.successText}>HACK SUCCESSFUL</Text>
-            <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Transferred ${score.toLocaleString()} to Bank</Text>
+            {/* V1.4: התאמת טקסט עולם היהלומים במסך הניצחון */}
+            {activeWorld.id === 'diamond_world' ? (
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Secured 💎 {runDiamondsEarned} to Vault</Text>
+            ) : (
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Transferred ${score.toLocaleString()} to Bank</Text>
+            )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>NEXT HEIST</Text></TouchableOpacity>
             <TouchableOpacity onPress={handleShareResult} style={styles.shareButton}><Text style={styles.shareButtonText}>SHARE HEIST</Text></TouchableOpacity>
@@ -140,7 +144,12 @@ export default function GameUI({
         {gameState === 'GAMEOVER' && (
           <View style={styles.gameOverContainer}>
             <Text style={styles.gameOverText}>SYSTEM LOCKED</Text>
-            <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${consolationPrize.toLocaleString()}</Text>
+            {/* V1.4: התאמת טקסט עולם היהלומים במסך ההפסד */}
+            {activeWorld.id === 'diamond_world' ? (
+              <Text style={[styles.scrappedText, { color: '#00FFFF' }]}>Kept 100% of mined gems: 💎 {runDiamondsEarned}</Text>
+            ) : (
+              <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${consolationPrize.toLocaleString()}</Text>
+            )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>RETRY</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/shop')} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>GO TO SHOP</Text></TouchableOpacity>
