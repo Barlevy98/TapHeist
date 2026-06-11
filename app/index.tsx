@@ -48,6 +48,8 @@ const BASE_REWARD = 4;
 const FAIL_REWARD_FRACTION = 0.25;
 const DIAMOND_CHANCE = 0.20;
 const NEAR_MISS_MULTIPLIER = 1.35;
+// --- הוספת באפר ויזואלי סלחני (עוזר להתמודד עם העובי הוויזואלי של המחוג) ---
+const HIT_BUFFER = 2.5; 
 
 // פרסומת מתגמלת
 const adUnitId = __DEV__ 
@@ -58,7 +60,7 @@ const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
   requestNonPersonalizedAdsOnly: false,
 });
 
-// --- פרסומת מעברון (Interstitial) חדשה מגרסה 1.4 ---
+// פרסומת מעברון (Interstitial) 
 const interstitialAdUnitId = __DEV__
   ? TestIds.INTERSTITIAL
   : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/1265725642' : 'ca-app-pub-9244809721385064/1265725642');
@@ -176,7 +178,6 @@ export default function GameScreen() {
   };
 
   useEffect(() => {
-    // מאזינים לפרסומת המתגמלת
     const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => setAdLoaded(true));
     const unsubscribeEarned = rewardedAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => setPendingRevive(true));
     const unsubscribeClosed = rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
@@ -184,14 +185,12 @@ export default function GameScreen() {
       rewardedAd.load(); 
     });
 
-    // מאזינים לפרסומת הקופצת (Interstitial)
     const unsubInterstitialLoaded = interstitialAd.addAdEventListener(AdEventType.LOADED, () => {
       setInterstitialLoaded(true);
     });
     const unsubInterstitialClosed = interstitialAd.addAdEventListener(AdEventType.CLOSED, () => {
       setInterstitialLoaded(false);
       interstitialAd.load();
-      // ברגע שהשחקן סוגר את הפרסומת, המשחק שהיה "בהמתנה" יתחיל מיד
       if (pendingStart.current) {
         pendingStart.current = false;
         startGame();
@@ -399,7 +398,6 @@ export default function GameScreen() {
     }
   };
 
-  // פונקציית הליבה להתחלת המשחק בפועל
   const startGame = async () => {
     cancelAnimation(rotation);
     rotation.value = 0;
@@ -443,20 +441,17 @@ export default function GameScreen() {
     }, 0);
   };
 
-  // --- המעטפת שבודקת אם צריך להציג פרסומת לפי כמות המשחקים ---
   const requestStartGame = async () => {
     if (introStep !== null && introStep < 3) {
       await startGame();
       return;
     }
     
-    // אם חלפו 4 משחקים והפרסומת מוכנה, מציגים פרסומת ושומרים את המשחק בהמתנה
     if (gamesSinceAd >= 4 && interstitialLoaded) {
       pendingStart.current = true;
       setGamesSinceAd(0);
       interstitialAd.show();
     } else {
-      // אם הפרסומת לא מוכנה או שלא עברו 4 משחקים - פשוט מעדכנים מונה ומתחילים רגיל
       setGamesSinceAd(prev => prev + 1);
       await startGame();
     }
@@ -580,7 +575,6 @@ export default function GameScreen() {
   };
 
   const handleTap = async () => {
-    // אנו קוראים לפונקציית המעטפת כדי לבדוק אם צריכה לקפוץ פרסומת!
     if (gameState === 'START' || gameState === 'CASHED_OUT') { await requestStartGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
     if (gameState !== 'PLAYING') return;
@@ -595,8 +589,9 @@ export default function GameScreen() {
     let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
     if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
-    const isHit = angleDiff <= activeZoneSize / 2;
-    const isNearMiss = !isHit && angleDiff <= (activeZoneSize / 2) * NEAR_MISS_MULTIPLIER;
+    // --- התיקון שלנו: באפר חינמי של 2.5 מעלות לטובת השחקן כדאי לחפות על עובי המחוג ---
+    const isHit = angleDiff <= (activeZoneSize / 2) + HIT_BUFFER;
+    const isNearMiss = !isHit && angleDiff <= ((activeZoneSize / 2) + HIT_BUFFER) * NEAR_MISS_MULTIPLIER;
 
     if (isHit) {
       if (focusTapsLeft > 0) {
@@ -709,7 +704,8 @@ export default function GameScreen() {
           runDiamondsEarned={runDiamondsEarned} 
         />
 
-        <Pressable style={styles.touchArea} onPress={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
+        {/* --- התיקון השני: שימוש ב-onPressIn כדי שהמגע ייקלט ברגע הלחיצה הראשוני --- */}
+        <Pressable style={styles.touchArea} onPressIn={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
           <VaultRing 
             CIRCLE_SIZE={CIRCLE_SIZE}
             STROKE_WIDTH={STROKE_WIDTH}
