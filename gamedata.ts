@@ -32,7 +32,6 @@ export interface Mission {
   rewardValue: any;
 }
 
-// --- ממשק משימות שבועיות חדש ---
 export interface WeeklyMission {
   id: string;
   title: string;
@@ -67,7 +66,6 @@ export const SKINS: Skin[] = [
   { id: 'hacker_king', name: 'HACKER KING', currency: 'cash', price: 50000, color: '#FF4500', glow: 40, width: 10, shape: 'lightning' },
   { id: 'cyber_demon', name: 'CYBER DEMON', currency: 'cash', price: 75000, color: '#FF0000', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF0000', secondaryColor: '#111111' },
   { id: 'neon_voltage', name: 'NEON VOLTAGE', currency: 'cash', price: 100000, color: '#FFFF00', glow: 25, width: 8, shape: 'gradient', primaryColor: '#FFFF00', secondaryColor: '#0000FF' },
-  
   { id: 'synthwave', name: 'SYNTHWAVE', currency: 'cash', price: 150000, color: '#FF00FF', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF00FF', secondaryColor: '#00FFFF' },
   { id: 'toxic_spill', name: 'TOXIC SPILL', currency: 'cash', price: 200000, color: '#39FF14', glow: 25, width: 8, shape: 'gradient', primaryColor: '#39FF14', secondaryColor: '#8A2BE2' },
   { id: 'blood_orange', name: 'BLOOD ORANGE', currency: 'cash', price: 250000, color: '#FF4500', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF4500', secondaryColor: '#FF0000' },
@@ -85,12 +83,16 @@ export const SKINS: Skin[] = [
 
 export const WORLDS: World[] = [
   { id: 'darknet', name: 'DARKNET (DEFAULT)', currency: 'cash', price: 0, bg: '#050505', vaultRing: '#1A1A1A', textPrimary: '#FFFFFF', textSecondary: '#666666' },
-  { id: 'retro', name: 'RETRO ARCADE', currency: 'cash', price: 3000, bg: '#120424', vaultRing: '#4B0082', textPrimary: '#FF007F', textSecondary: '#39FF14' },
+  
+  // --- V1.4: צבעים חדשים ומובחנים לחלוטין לעולמות ---
+  { id: 'retro', name: 'RETRO ARCADE', currency: 'cash', price: 3000, bg: '#1A0B2E', vaultRing: '#FF007F', textPrimary: '#FFD700', textSecondary: '#00FFFF' },
+  { id: 'cyber', name: 'CYBERPUNK NEON', currency: 'diamond', price: 750, bg: '#001A22', vaultRing: '#00FFFF', textPrimary: '#FFFF00', textSecondary: '#FF0055' },
+  { id: 'poh_vault', name: 'PROOF-OF-HISTORY', currency: 'diamond', price: 1000, bg: '#001008', vaultRing: '#004D2A', textPrimary: '#14F195', textSecondary: '#FFFFFF' },
+  // ---------------------------------------------------
+
   { id: 'arctic', name: 'ARCTIC LAB', currency: 'cash', price: 8000, bg: '#F2F2F7', vaultRing: '#D1D1D6', textPrimary: '#1C1C1E', textSecondary: '#8E8E93' },
   { id: 'diamond_world', name: 'DIAMOND MINE', currency: 'diamond', price: 250, bg: '#050011', vaultRing: '#110022', textPrimary: '#00FFFF', textSecondary: '#660088' },
   { id: 'zk_vault', name: 'ZERO-KNOWLEDGE', currency: 'diamond', price: 500, bg: '#09090B', vaultRing: '#27272A', textPrimary: '#A1A1AA', textSecondary: '#52525B' },
-  { id: 'cyber', name: 'CYBERPUNK NEON', currency: 'diamond', price: 750, bg: '#0A001F', vaultRing: '#2A0080', textPrimary: '#00FFFF', textSecondary: '#FF00FF' },
-  { id: 'poh_vault', name: 'PROOF-OF-HISTORY', currency: 'diamond', price: 1000, bg: '#140027', vaultRing: '#3B0066', textPrimary: '#14F195', textSecondary: '#9945FF' },
   { id: 'blood', name: 'BLOOD MOON', currency: 'diamond', price: 1500, bg: '#1A0000', vaultRing: '#330000', textPrimary: '#FF3B30', textSecondary: '#800000' },
   { id: 'nebula', name: 'DEEP NEBULA', currency: 'diamond', price: 4000, bg: '#020210', vaultRing: '#0D1B2A', textPrimary: '#E0AA3E', textSecondary: '#415A77' },
 ];
@@ -101,7 +103,6 @@ export const POWER_UPS: PowerUp[] = [
   { id: 'precision_focus', name: 'PRECISION FOCUS', desc: 'Double hit-zone size for 5 taps.', price: 15, currency: 'diamond', color: '#FFCC00' },
 ];
 
-// --- מאגר האתגרים השבועיים החדש לגרסה 1.3 ---
 export const WEEKLY_MISSIONS: WeeklyMission[] = [
   { id: 'w_combo_25', title: 'WEEKLY SPEEDRUN', desc: 'Reach a Combo of 25 this week', type: 'combo', target: 25, rewardType: 'cash', rewardValue: 12000 },
   { id: 'w_mult_16', title: 'EMERGENCY LEVERAGE', desc: 'Reach a x16 Multiplier this week', type: 'multiplier', target: 16, rewardType: 'diamond', rewardValue: 100 },
