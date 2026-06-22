@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import Svg, { Circle, Polygon, Path, Text as SvgText, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Circle, Polygon, Path, Defs, LinearGradient, Stop, Rect, G } from 'react-native-svg';
 import { GradientPointer } from './GradientPointer';
 
 export default function VaultRing({
@@ -17,7 +17,11 @@ export default function VaultRing({
   hitFlashStyle,
   pointerAnimatedStyle,
   activeSkin,
+  currentRewardTier
 }: any) {
+  
+  const displayColor = currentRewardTier?.color || '#00FFFF';
+
   return (
     <View style={[styles.vaultContainer, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
       
@@ -26,16 +30,21 @@ export default function VaultRing({
         <Circle cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={activeWorld.vaultRing} strokeWidth={STROKE_WIDTH} fill="none" />
       </Svg>
 
-      {/* אזור המטרה (הירוק/תכלת) */}
+      {/* אזור המטרה (הירוק/יהלומים צבעוניים) */}
       <Animated.View style={[styles.svg, targetOpacityStyle]} pointerEvents="none">
         <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
           <Circle
-            cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={isDiamondTarget ? '#00FFFF' : '#00FF66'}
+            cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={isDiamondTarget ? displayColor : '#00FF66'}
             strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
             origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
           />
           {isDiamondTarget && gameState === 'PLAYING' && (
-            <SvgText x={CIRCLE_SIZE / 2} y={CIRCLE_SIZE / 2 - radius + 8} fill="#00FFFF" fontSize="22" fontWeight="bold" textAnchor="middle">💎</SvgText>
+            <G x={CIRCLE_SIZE / 2 - 12} y={CIRCLE_SIZE / 2 - radius - 4}>
+              {/* צורת יהלום SVG מדויקת וקבועה - רק הצבע משתנה! */}
+              <Path d="M6 5 L18 5 L22 10 L12 22 L2 10 Z" fill={displayColor} />
+              <Path d="M6 5 L12 10 L18 5 M2 10 L22 10 M12 10 L12 22" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
+              <Path d="M6 5 L12 10 L2 10 Z" fill="rgba(255,255,255,0.4)" />
+            </G>
           )}
         </Svg>
       </Animated.View>

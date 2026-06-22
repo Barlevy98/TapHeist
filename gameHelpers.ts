@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   diamondTutorial: 'has_seen_tutorial',
   coreTutorial: 'has_seen_core_tutorial',
   riskTutorial: 'has_seen_risk_tutorial',
+  firewallTutorial: 'has_seen_firewall_tutorial',
   lastDailyClaim: 'last_daily_claim_date',
   dailyStreak: 'daily_streak_count',
   hapticsEnabled: 'settings_haptics_enabled',
@@ -26,16 +27,24 @@ export const STORAGE_KEYS = {
   inv_time_freeze: 'inv_time_freeze',
   inv_precision_focus: 'inv_precision_focus',
   
-  // --- מפתחות שבועיים לגרסה 1.3 ---
   weeklyExpiry: 'weekly_missions_expiry_time',
   weeklyActiveIds: 'weekly_active_missions_ids',
   weeklyClaimed: 'weekly_missions_claimed_ids',
   weeklyHeistsCount: 'weekly_stat_heists_count',
+  weeklyMaxCombo: 'weekly_stat_max_combo',
+  weeklyMaxMultiplier: 'weekly_stat_max_multiplier',
 
-  // --- מפתחות גרסה 1.4: Prestige & Firewall ---
   prestigeMultiplier: 'stat_prestige_mult',
   gamesSinceFirewall: 'stat_games_firewall',
 } as const;
+
+export function formatNumber(num: number): string {
+  if (num >= 1e12) return (num / 1e12).toFixed(2).replace(/\.00$/, '') + 'T';
+  if (num >= 1e9) return (num / 1e9).toFixed(2).replace(/\.00$/, '') + 'B';
+  if (num >= 1e6) return (num / 1e6).toFixed(2).replace(/\.00$/, '') + 'M';
+  if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+  return num.toString();
+}
 
 export async function getPowerUpInventory(): Promise<Record<string, number>> {
   const shield = await SecureStore.getItemAsync(STORAGE_KEYS.inv_smart_shield);
@@ -75,6 +84,8 @@ export async function loadWeeklyMissionsData() {
     await SecureStore.setItemAsync(STORAGE_KEYS.weeklyExpiry, expiry.toString());
     await SecureStore.setItemAsync(STORAGE_KEYS.weeklyClaimed, JSON.stringify([]));
     await SecureStore.setItemAsync(STORAGE_KEYS.weeklyHeistsCount, '0');
+    await SecureStore.setItemAsync(STORAGE_KEYS.weeklyMaxCombo, '0');
+    await SecureStore.setItemAsync(STORAGE_KEYS.weeklyMaxMultiplier, '1');
 
     const shuffled = [...WEEKLY_MISSIONS].sort(() => 0.5 - Math.random());
     const pickedIds = shuffled.slice(0, 3).map(m => m.id);
@@ -89,6 +100,8 @@ export async function loadWeeklyMissionsData() {
   const claimed: string[] = claimedRaw ? JSON.parse(claimedRaw) : [];
 
   const weeklyHeists = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyHeistsCount);
+  const wCombo = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyMaxCombo);
+  const wMult = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyMaxMultiplier);
 
   const diff = expiry - now;
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -98,6 +111,8 @@ export async function loadWeeklyMissionsData() {
     missions: activeMissions,
     claimed,
     weeklyHeists: weeklyHeists ? parseInt(weeklyHeists, 10) : 0,
+    weeklyMaxCombo: wCombo ? parseInt(wCombo, 10) : 0,
+    weeklyMaxMultiplier: wMult ? parseInt(wMult, 10) : 1,
     countdown: `${days}d ${hours}h left`,
   };
 }
@@ -231,8 +246,8 @@ export async function countClaimableMissions(): Promise<number> {
   weeklyInfo.missions.forEach((wm) => {
     if (weeklyInfo.claimed.includes(wm.id)) return;
     let completed = false;
-    if (wm.type === 'combo' && stats.combo >= wm.target) completed = true;
-    if (wm.type === 'multiplier' && stats.multiplier >= wm.target) completed = true;
+    if (wm.type === 'combo' && weeklyInfo.weeklyMaxCombo >= wm.target) completed = true;
+    if (wm.type === 'multiplier' && weeklyInfo.weeklyMaxMultiplier >= wm.target) completed = true;
     if (wm.type === 'weekly_heists' && weeklyInfo.weeklyHeists >= wm.target) completed = true;
     if (completed) count += 1;
   });
@@ -285,9 +300,12 @@ export const CORE_TUTORIAL_STEPS = [
   { title: 'STEP 3: FAILURE COST', text: 'Miss the zone and you lose 75% of this run\'s cash. Only 25% gets scrapped into your bank.' },
 ];
 
-// === V1.4: GHOST PROTOCOL (PRESTIGE) & HACKER RANKS ===
-
 export const PRESTIGE_TIERS = [
+  { cost: 1000000000, mult: 1024 },
+  { cost: 500000000, mult: 512 },
+  { cost: 100000000, mult: 256 },
+  { cost: 50000000, mult: 128 },
+  { cost: 25000000, mult: 64 },
   { cost: 10000000, mult: 32 },
   { cost: 6000000, mult: 16 },
   { cost: 4000000, mult: 8 },
@@ -305,9 +323,38 @@ export function getPrestigeOffer(bank: number, currentMult: number) {
 }
 
 export function getHackerRank(heists: number, maxCombo: number): string {
-  if (heists >= 1000 || maxCombo >= 60) return 'MASTER PHANTOM';
-  if (heists >= 500 || maxCombo >= 40) return 'CYBER DEMON';
-  if (heists >= 200 || maxCombo >= 25) return 'SYSTEM ADMIN';
-  if (heists >= 50 || maxCombo >= 15) return 'MALWARE DEV';
+  if (heists >= 2500 || maxCombo >= 150) return 'APEX SINGULARITY';
+  if (heists >= 1000 || maxCombo >= 120) return 'CYBER GOD';
+  if (heists >= 750 || maxCombo >= 100) return 'THE ARCHITECT';
+  if (heists >= 500 || maxCombo >= 85) return 'GHOST IN THE MACHINE';
+  if (heists >= 350 || maxCombo >= 70) return 'MASTER PHANTOM';
+  if (heists >= 200 || maxCombo >= 55) return 'NETRUNNER';
+  if (heists >= 120 || maxCombo >= 45) return 'CYBER DEMON';
+  if (heists >= 80 || maxCombo >= 35) return 'BLACK HAT';
+  if (heists >= 50 || maxCombo >= 25) return 'SYSTEM ADMIN';
+  if (heists >= 25 || maxCombo >= 20) return 'WHITE HAT';
+  if (heists >= 10 || maxCombo >= 12) return 'MALWARE DEV';
+  if (heists >= 5 || maxCombo >= 8) return 'PACKET SNIFFER';
   return 'SCRIPT KIDDIE';
+}
+
+// --- תיקון אבולוציית הצבעים במדויק לדרישות שלך! ---
+export function getRewardTier(nextCombo: number, worldId: string) {
+  if (worldId === 'diamond_world') {
+    // עולם היהלומים: מטפס מהר יותר
+    if (nextCombo >= 25) return { gain: 4, color: '#FF3B30' }; // אדום
+    if (nextCombo >= 15) return { gain: 3, color: '#FFCC00' }; // זהב
+    if (nextCombo >= 10) return { gain: 2, color: '#C0C0C0' }; // כסף
+    return { gain: 1, color: '#00FFFF' }; // תכלת דיפולט
+  } else if (worldId === 'nebula') {
+    // עולם ה-Nebula: מתחיל גבוה
+    if (nextCombo >= 125) return { gain: 4, color: '#FF3B30' };
+    return { gain: 3, color: '#FFCC00' };
+  } else {
+    // שאר העולמות הרגילים
+    if (nextCombo >= 125) return { gain: 4, color: '#FF3B30' }; // אדום
+    if (nextCombo >= 100) return { gain: 3, color: '#FFCC00' }; // זהב
+    if (nextCombo >= 50)  return { gain: 2, color: '#C0C0C0' }; // כסף
+    return { gain: 1, color: '#00FFFF' }; // תכלת דיפולט
+  }
 }

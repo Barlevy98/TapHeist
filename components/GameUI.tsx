@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import { CORE_TUTORIAL_STEPS } from '../gameHelpers';
+import { CORE_TUTORIAL_STEPS, formatNumber } from '../gameHelpers';
 
 export default function GameUI({
   gameState,
@@ -39,7 +39,7 @@ export default function GameUI({
 
   const renderRunStats = () => (
     <Text style={styles.runStatsText}>
-      Run: {runMaxCombo} combo · x{multiplier} peak · 💎 {runDiamondsEarned} this heist
+      Run: {runMaxCombo} combo · x{formatNumber(multiplier)} peak · 💎 {runDiamondsEarned} this heist
     </Text>
   );
 
@@ -57,7 +57,7 @@ export default function GameUI({
             {prestigeOffer && (
               <TouchableOpacity onPress={handlePrestige} style={styles.prestigeButton}>
                 <Text style={styles.prestigeTitle}>💀 GHOST PROTOCOL 💀</Text>
-                <Text style={styles.prestigeDesc}>Burn ${prestigeOffer.cost.toLocaleString()} for permanent x{prestigeOffer.mult} multiplier!</Text>
+                <Text style={styles.prestigeDesc}>Burn ${formatNumber(prestigeOffer.cost)} for permanent x{prestigeOffer.mult} multiplier!</Text>
               </TouchableOpacity>
             )}
 
@@ -70,7 +70,7 @@ export default function GameUI({
 
             {mainNextUnlock && !prestigeOffer && !isFirewallActive && (
               <Text style={styles.mainNextUnlockText}>
-                NEXT OBJECTIVE: {mainNextUnlock.name} ({mainNextUnlock.currency === 'diamond' ? '💎' : '$'}{mainNextUnlock.missing.toLocaleString()} LEFT)
+                NEXT OBJECTIVE: {mainNextUnlock.name} ({mainNextUnlock.currency === 'diamond' ? '💎' : '$'}{formatNumber(mainNextUnlock.missing)} LEFT)
               </Text>
             )}
 
@@ -92,6 +92,15 @@ export default function GameUI({
           </View>
         )}
 
+        {/* --- מסך ההדרכה החדש של פריצת חומת האש --- */}
+        {gameState === 'FIREWALL_TUTORIAL' && (
+          <View style={styles.tutorialContainer}>
+            <Text style={[styles.tutorialTitle, { color: '#FFCC00' }]}>🔥 FIREWALL ENCOUNTERED 🔥</Text>
+            <Text style={styles.tutorialText}>The system has detected your intrusion! The zone is shrinking and rotating faster. Every hit guarantees 3 Diamonds.</Text>
+            <Text style={[styles.tutorialTap, { color: '#FF3B30' }]}>TAP TO START BREACH</Text>
+          </View>
+        )}
+
         {gameState === 'TUTORIAL' && (
           <View style={styles.tutorialContainer}>
             <Text style={styles.tutorialTitle}>💎 PREMIUM TARGET DETECTED 💎</Text>
@@ -110,8 +119,9 @@ export default function GameUI({
                 <TouchableOpacity onPress={dismissRiskTutorial} style={styles.riskTutorialBtn}><Text style={styles.riskTutorialBtnText}>GOT IT</Text></TouchableOpacity>
               </View>
             )}
-            <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}><Text style={styles.cashOutText}>CASH OUT (${score.toLocaleString()})</Text></TouchableOpacity>
-            <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}><Text style={styles.riskItText}>RISK IT (x{multiplier * 2})</Text></TouchableOpacity>
+            {/* שימוש ב-formatNumber כדי למנוע גלישת טקסט בכפתורים */}
+            <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}><Text style={styles.cashOutText}>CASH OUT (${formatNumber(score)})</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}><Text style={styles.riskItText}>RISK IT (x{formatNumber(multiplier * 2)})</Text></TouchableOpacity>
           </View>
         )}
 
@@ -127,11 +137,10 @@ export default function GameUI({
         {gameState === 'CASHED_OUT' && (
           <Animated.View style={[styles.gameOverContainer, successPulseStyle]}>
             <Text style={styles.successText}>HACK SUCCESSFUL</Text>
-            {/* V1.4: התאמת טקסט עולם היהלומים במסך הניצחון */}
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Secured 💎 {runDiamondsEarned} to Vault</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Secured 💎 {formatNumber(runDiamondsEarned)} to Vault</Text>
             ) : (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Transferred ${score.toLocaleString()} to Bank</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Transferred ${formatNumber(score)} to Bank</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>NEXT HEIST</Text></TouchableOpacity>
@@ -144,11 +153,10 @@ export default function GameUI({
         {gameState === 'GAMEOVER' && (
           <View style={styles.gameOverContainer}>
             <Text style={styles.gameOverText}>SYSTEM LOCKED</Text>
-            {/* V1.4: התאמת טקסט עולם היהלומים במסך ההפסד */}
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.scrappedText, { color: '#00FFFF' }]}>Kept 100% of mined gems: 💎 {runDiamondsEarned}</Text>
+              <Text style={[styles.scrappedText, { color: '#00FFFF' }]}>Kept 100% of mined gems: 💎 {formatNumber(runDiamondsEarned)}</Text>
             ) : (
-              <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${consolationPrize.toLocaleString()}</Text>
+              <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${formatNumber(consolationPrize)}</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>RETRY</Text></TouchableOpacity>
@@ -173,7 +181,7 @@ export default function GameUI({
         <View style={styles.introOverlay}>
           <View style={[styles.introCard, { borderColor: '#FFCC00' }]}>
             <Text style={[styles.introTitle, { color: '#FFCC00' }]}>DAILY BONUS</Text>
-            <Text style={styles.introText}>Day {dailyModal.streak} streak! Claim +${dailyModal.cash.toLocaleString()}{dailyModal.diamonds > 0 ? ` and 💎 ${dailyModal.diamonds}` : ''}.</Text>
+            <Text style={styles.introText}>Day {dailyModal.streak} streak! Claim +${formatNumber(dailyModal.cash)}{dailyModal.diamonds > 0 ? ` and 💎 ${dailyModal.diamonds}` : ''}.</Text>
             <TouchableOpacity onPress={handleClaimDaily} style={[styles.introButton, { backgroundColor: '#FFCC00' }]}><Text style={[styles.introButtonText, { color: '#000' }]}>CLAIM</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => setDailyModal((m: any) => ({ ...m, visible: false }))} style={styles.introSkip}><Text style={styles.introSkipText}>Later</Text></TouchableOpacity>
           </View>

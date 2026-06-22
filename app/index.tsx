@@ -37,7 +37,9 @@ import {
   getNextUnlock,
   incrementWeeklyHeists,
   getPrestigeOffer,
-  getHackerRank
+  getHackerRank,
+  formatNumber,
+  getRewardTier
 } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
@@ -48,8 +50,6 @@ const BASE_REWARD = 4;
 const FAIL_REWARD_FRACTION = 0.25;
 const DIAMOND_CHANCE = 0.20;
 const NEAR_MISS_MULTIPLIER = 1.35;
-
-// --- תוקן: הבאפר קוצץ כדי למנוע מצב שהמחוג כמעט כולו בחוץ ועדיין עובר ---
 const HIT_BUFFER = 0.8; 
 
 const adUnitId = __DEV__ 
@@ -123,6 +123,13 @@ export default function GameScreen() {
     ? Math.max(15, ZONE_SIZE * 0.5) 
     : (focusTapsLeft > 0 ? ZONE_SIZE * 2 : ZONE_SIZE);
 
+  const displayWorld = isFirewallActive 
+    ? { ...activeWorld, bg: '#1A0000', vaultRing: '#FFCC00', textPrimary: '#FFCC00', textSecondary: '#FF3B30' } 
+    : activeWorld;
+
+  const currentRewardTier = getRewardTier(combo + 1, activeWorld.id);
+  const isOverheating = combo >= 100; 
+
   const shieldScale = useSharedValue(1);
   const freezeScale = useSharedValue(1);
   const focusScale = useSharedValue(1);
@@ -138,7 +145,7 @@ export default function GameScreen() {
   const nearMissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pointerAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));
-  const floatingScoreStyle = useAnimatedStyle(() => ({ transform: [{ translateY: floatAnim.value }], opacity: floatOpacity.value, position: 'absolute', right: 0, top: -30 }));
+  const floatingScoreStyle = useAnimatedStyle(() => ({ transform: [{ translateY: floatAnim.value }], opacity: floatOpacity.value }));
   const hitFlashStyle = useAnimatedStyle(() => ({ opacity: hitFlash.value }));
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
   const successPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: successPulse.value }] }));
@@ -157,6 +164,9 @@ export default function GameScreen() {
     let baseDuration = 2000;
     let speedStep = 60;
     let minDuration = 800;
+
+    if (activeWorld.id === 'retro') { baseDuration *= 1.2; speedStep *= 0.8; }
+    if (activeWorld.id === 'nebula') { baseDuration *= 0.7; }
 
     if (isDiamondWorld) { baseDuration = 1000; speedStep = 45; minDuration = 400; } 
     else if (isPoHWorld) { baseDuration = 800; speedStep = 30; minDuration = 250; }
@@ -181,7 +191,6 @@ export default function GameScreen() {
       setInterstitialLoaded(true);
     });
     
-    // בוטל ההפעלה האוטומטית - כשהפרסומת נסגרת רק טוענים אחת חדשה
     const unsubInterstitialClosed = interstitialAd.addAdEventListener(AdEventType.CLOSED, () => {
       setInterstitialLoaded(false);
       interstitialAd.load();
@@ -309,7 +318,7 @@ export default function GameScreen() {
   const showNearMiss = (customText = 'CLOSE!') => {
     setNearMissText(customText);
     if (nearMissTimer.current) clearTimeout(nearMissTimer.current);
-    nearMissTimer.current = setTimeout(() => setNearMissText(null), 1000);
+    nearMissTimer.current = setTimeout(() => setNearMissText(null), 1500);
   };
 
   const pulseSuccess = () => { successPulse.value = withSequence(withTiming(1.08, { duration: 200 }), withTiming(1, { duration: 300 })); };
@@ -391,7 +400,6 @@ export default function GameScreen() {
   const startGame = async () => {
     if (introStep !== null && introStep < 3) return;
     
-    // עדכון ספירת המשחקים עבור המעברון
     setGamesSinceAd(prev => prev + 1);
 
     cancelAnimation(rotation);
@@ -417,7 +425,6 @@ export default function GameScreen() {
     let currentFirewallCount = gamesSinceFirewall + 1;
     let triggerFirewall = false;
     
-    // --- תוקן: קורה החל ממשחק 5 עם סיכוי של 20% ---
     if (currentFirewallCount >= 5 && Math.random() < 0.20) {
       triggerFirewall = true;
       currentFirewallCount = 0;
@@ -429,12 +436,43 @@ export default function GameScreen() {
 
     closeInventory();
     targetOpacity.value = 1;
-    setGameState('PLAYING');
     
+    if (triggerFirewall) {
+      const seenFW = await SecureStore.getItemAsync(STORAGE_KEYS.firewallTutorial);
+      if (seenFW !== 'true') {
+        setGameState('FIREWALL_TUTORIAL');
+        await SecureStore.setItemAsync(STORAGE_KEYS.firewallTutorial, 'true');
+        return; 
+      }
+    }
+
+    setGameState('PLAYING');
     setTimeout(() => {
       randomizeTarget();
       startRotation(getSpeedDuration(0), 1);
     }, 0);
+  };
+
+  const startFirewallFromTutorial = () => {
+    setGameState('PLAYING');
+    setTimeout(() => {
+      randomizeTarget();
+      startRotation(getSpeedDuration(0), 1);
+    }, 0);
+  }
+
+  const requestStartGame = async () => {
+    if (introStep !== null && introStep < 3) {
+      await startGame();
+      return;
+    }
+    
+    if (gamesSinceAd >= 4 && interstitialLoaded) {
+      interstitialAd.show();
+      setGamesSinceAd(0);
+    } else {
+      await startGame();
+    }
   };
 
   const startRotation = (duration: number, dir: number) => {
@@ -521,7 +559,6 @@ export default function GameScreen() {
     setGameState('CASHED_OUT');
     setMissionBadge(await countClaimableMissions());
 
-    // --- הצגת פרסומת במידה וזה סוף הריצה ה-4 ---
     if (gamesSinceAd >= 4 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
@@ -533,14 +570,17 @@ export default function GameScreen() {
     await hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
     const newMult = multiplier * 2;
     setMultiplier(newMult);
+    
     updateStatsRecord(STORAGE_KEYS.maxMultiplier, newMult);
+    updateStatsRecord(STORAGE_KEYS.weeklyMaxMultiplier, newMult);
+    
     setGameState('PLAYING');
     randomizeTarget();
     setTimeout(() => { startRotation(getSpeedDuration(combo), direction); }, 0);
   };
 
   const handleShareResult = async () => {
-    try { await Share.share({ message: `I just hacked $${score.toLocaleString()} into my vault on Tap Heist! x${multiplier} multiplier. Can you beat my heist?` }); } catch (_) {}
+    try { await Share.share({ message: `I just hacked $${formatNumber(score)} into my vault on Tap Heist! x${formatNumber(multiplier)} multiplier. Can you beat my heist?` }); } catch (_) {}
   };
 
   const processGameOver = async () => {
@@ -559,7 +599,6 @@ export default function GameScreen() {
     setGameState('GAMEOVER');
     setMissionBadge(await countClaimableMissions());
 
-    // --- הצגת פרסומת מיידית על מסך ההפסד אם הגענו ל-4 משחקים ---
     if (gamesSinceAd >= 4 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
@@ -567,8 +606,9 @@ export default function GameScreen() {
   };
 
   const handleTap = async () => {
-    if (gameState === 'START' || gameState === 'CASHED_OUT') { await startGame(); return; }
+    if (gameState === 'START' || gameState === 'CASHED_OUT') { await requestStartGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
+    if (gameState === 'FIREWALL_TUTORIAL') { startFirewallFromTutorial(); return; }
     if (gameState !== 'PLAYING') return;
     if (isInventoryOpen) { closeInventory(); return; }
 
@@ -581,8 +621,10 @@ export default function GameScreen() {
     let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
     if (angleDiff > 180) angleDiff = 360 - angleDiff;
 
-    const isHit = angleDiff <= (activeZoneSize / 2) + HIT_BUFFER;
-    const isNearMiss = !isHit && angleDiff <= ((activeZoneSize / 2) + HIT_BUFFER) * NEAR_MISS_MULTIPLIER;
+    const currentHitBuffer = activeWorld.id === 'arctic' ? HIT_BUFFER + 1.5 : HIT_BUFFER;
+
+    const isHit = angleDiff <= (activeZoneSize / 2) + currentHitBuffer;
+    const isNearMiss = !isHit && angleDiff <= ((activeZoneSize / 2) + currentHitBuffer) * NEAR_MISS_MULTIPLIER;
 
     if (isHit) {
       if (focusTapsLeft > 0) {
@@ -594,15 +636,14 @@ export default function GameScreen() {
       setCombo(newCombo);
       setRunMaxCombo((c) => Math.max(c, newCombo));
       setLifetimeMaxCombo((c) => Math.max(c, newCombo));
+      
       updateStatsRecord(STORAGE_KEYS.maxCombo, newCombo);
+      updateStatsRecord(STORAGE_KEYS.weeklyMaxCombo, newCombo);
+      
       flashHit();
 
-      let diamondGain = 1;
-      if (activeWorld.id === 'diamond_world' && newCombo >= 10) {
-        diamondGain = 2;
-      } else if (activeWorld.id !== 'diamond_world' && newCombo >= 50) {
-        diamondGain = 2;
-      }
+      const tier = getRewardTier(newCombo, activeWorld.id);
+      const diamondGain = tier.gain;
 
       if (isFirewallActive) {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
@@ -617,7 +658,9 @@ export default function GameScreen() {
       } else {
         await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
         const worldMultiplier = activeWorld.id === 'poh_vault' ? 5 : 1;
-        const reward = BASE_REWARD * multiplier * worldMultiplier * prestigeMult;
+        const retroMult = activeWorld.id === 'retro' ? 1.2 : 1;
+        const reward = Math.floor(BASE_REWARD * multiplier * worldMultiplier * prestigeMult * retroMult);
+        
         setScore((s) => s + reward);
         playScoreAnimation(reward);
       }
@@ -628,9 +671,23 @@ export default function GameScreen() {
         setDirection(nextDirection);
       }
 
-      if (newCombo % 10 === 0 && activeWorld.id !== 'diamond_world') { 
-        await enterRiskMode(); 
-        return; 
+      const riskInterval = activeWorld.id === 'blood' ? 5 : 10;
+      
+      // --- V1.4: הלוגיקה החדשה של עולם ה-Cyberpunk! אין עצירות! ---
+      if (newCombo % riskInterval === 0 && activeWorld.id !== 'diamond_world') { 
+        if (activeWorld.id === 'cyber') {
+          // מנגנון ה-Neon Overdrive: מכפיל אוטומטית וממשיך את המשחק בלי לעצור
+          const newMult = multiplier * 2;
+          setMultiplier(newMult);
+          updateStatsRecord(STORAGE_KEYS.maxMultiplier, newMult);
+          updateStatsRecord(STORAGE_KEYS.weeklyMaxMultiplier, newMult);
+          showNearMiss(`NEON OVERDRIVE! x${newMult}`);
+          await hapticNotification(Haptics.NotificationFeedbackType.Success);
+        } else {
+          // עולמות רגילים: עוצרים ונכנסים למסך הבחירה
+          await enterRiskMode(); 
+          return; 
+        }
       }
 
       randomizeTarget();
@@ -666,14 +723,14 @@ export default function GameScreen() {
   const strokeDasharray = `${(activeZoneSize / 360) * circumference} ${circumference}`;
   const strokeDashoffset = -(targetAngle / 360) * circumference;
   const isDirectionWarning = gameState === 'PLAYING' && combo > 0 && (combo + 1) % 5 === 0;
-  const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL';
+  const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL' || gameState === 'FIREWALL_TUTORIAL';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: activeWorld.bg }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: displayWorld.bg }]}>
       <Animated.View style={[styles.mainWrap, shakeStyle]}>
         
         <GameHeader 
-          activeWorld={activeWorld}
+          activeWorld={displayWorld}
           activeSkin={activeSkin}
           bank={bank}
           diamonds={diamonds}
@@ -693,23 +750,27 @@ export default function GameScreen() {
           isDirectionWarning={isDirectionWarning}
           nearMissText={nearMissText}
           runDiamondsEarned={runDiamondsEarned} 
+          currentRewardTier={currentRewardTier} 
         />
 
         <Pressable style={styles.touchArea} onPressIn={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
-          <VaultRing 
-            CIRCLE_SIZE={CIRCLE_SIZE}
-            STROKE_WIDTH={STROKE_WIDTH}
-            radius={radius}
-            activeWorld={activeWorld}
-            targetOpacityStyle={targetOpacityStyle}
-            isDiamondTarget={isDiamondTarget}
-            strokeDasharray={strokeDasharray}
-            strokeDashoffset={strokeDashoffset}
-            gameState={gameState}
-            hitFlashStyle={hitFlashStyle}
-            pointerAnimatedStyle={pointerAnimatedStyle}
-            activeSkin={activeSkin}
-          />
+          <Animated.View style={isOverheating && { shadowColor: '#FF3B30', shadowRadius: 20, shadowOpacity: 1 }}>
+            <VaultRing 
+              CIRCLE_SIZE={CIRCLE_SIZE}
+              STROKE_WIDTH={STROKE_WIDTH}
+              radius={radius}
+              activeWorld={displayWorld}
+              targetOpacityStyle={targetOpacityStyle}
+              isDiamondTarget={isDiamondTarget}
+              strokeDasharray={strokeDasharray}
+              strokeDashoffset={strokeDashoffset}
+              gameState={gameState}
+              hitFlashStyle={hitFlashStyle}
+              pointerAnimatedStyle={pointerAnimatedStyle}
+              activeSkin={activeSkin}
+              currentRewardTier={currentRewardTier} 
+            />
+          </Animated.View>
         </Pressable>
 
         <TacticalArsenal 
@@ -731,7 +792,7 @@ export default function GameScreen() {
         <GameUI 
           gameState={gameState}
           setGameState={setGameState}
-          activeWorld={activeWorld}
+          activeWorld={displayWorld}
           mainNextUnlock={mainNextUnlock}
           missionBadge={missionBadge}
           score={score}
@@ -744,7 +805,7 @@ export default function GameScreen() {
           handleCashOut={handleCashOut}
           handleRiskIt={handleRiskIt}
           processGameOver={processGameOver}
-          startGame={startGame} 
+          startGame={requestStartGame} 
           handleShareResult={handleShareResult}
           onRevive={() => rewardedAd.show()}
           successPulseStyle={successPulseStyle}

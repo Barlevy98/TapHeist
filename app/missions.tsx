@@ -10,7 +10,6 @@ import { updateMaxBank, loadWeeklyMissionsData, STORAGE_KEYS } from '../gameHelp
 export default function MissionsScreen() {
   const router = useRouter();
   
-  // טאב פעיל: OBJECTIVES (רגיל) או WEEKLY (שבועי)
   const [activeTab, setActiveTab] = useState<'core' | 'weekly'>('core');
   
   const [bank, setBank] = useState(0);
@@ -24,6 +23,11 @@ export default function MissionsScreen() {
   const [weeklyMissions, setWeeklyMissions] = useState<WeeklyMission[]>([]);
   const [weeklyClaimed, setWeeklyClaimed] = useState<string[]>([]);
   const [weeklyHeistsCount, setWeeklyHeistsCount] = useState(0);
+  
+  // --- V1.4: הוספת משתנים למעקב אחר שיאים שבועיים ---
+  const [weeklyMaxCombo, setWeeklyMaxCombo] = useState(0);
+  const [weeklyMaxMultiplier, setWeeklyMaxMultiplier] = useState(1);
+  
   const [weeklyCountdown, setWeeklyCountdown] = useState('');
 
   const [notification, setNotification] = useState({ visible: false, title: '', subtitle: '' });
@@ -56,11 +60,13 @@ export default function MissionsScreen() {
         bank: maxBank ? parseInt(maxBank) : 0,
       });
 
-      // טעינת נתונים שבועיים דרך מנגנון העזר האוטומטי
+      // משיכת הנתונים השבועיים ועדכון הסטייט החדש
       const wData = await loadWeeklyMissionsData();
       setWeeklyMissions(wData.missions);
       setWeeklyClaimed(wData.claimed);
       setWeeklyHeistsCount(wData.weeklyHeists);
+      setWeeklyMaxCombo(wData.weeklyMaxCombo);
+      setWeeklyMaxMultiplier(wData.weeklyMaxMultiplier);
       setWeeklyCountdown(wData.countdown);
 
     } catch (e) { console.log('Error loading data', e); }
@@ -123,10 +129,11 @@ export default function MissionsScreen() {
     return { current, target: mission.target, isCompleted: current >= mission.target };
   };
 
+  // --- V1.4: תיקון בדיקת ההתקדמות השבועית שתשאב מהמשתנים השבועיים ---
   const checkWeeklyProgress = (mission: WeeklyMission) => {
     let current = 0;
-    if (mission.type === 'combo') current = stats.combo;
-    if (mission.type === 'multiplier') current = stats.multiplier;
+    if (mission.type === 'combo') current = weeklyMaxCombo;
+    if (mission.type === 'multiplier') current = weeklyMaxMultiplier;
     if (mission.type === 'weekly_heists') current = weeklyHeistsCount;
     return { current, target: mission.target, isCompleted: current >= mission.target };
   };
@@ -145,7 +152,6 @@ export default function MissionsScreen() {
         <Text style={styles.title}>OBJECTIVES</Text>
         <Text style={styles.subtitle}>Complete hacks to earn rewards</Text>
 
-        {/* --- גרסה 1.3: טאבים להחלפה בין משימות רגילות לשבועיות --- */}
         <View style={styles.tabContainer}>
           <TouchableOpacity style={[styles.tabButton, activeTab === 'core' && styles.tabButtonActive]} onPress={() => setActiveTab('core')}>
             <Text style={[styles.tabText, activeTab === 'core' && styles.tabTextActive]}>CORE MISSIONS</Text>
@@ -155,14 +161,12 @@ export default function MissionsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* חיווי טיימר לאחור שמופיע רק בטאב השבועי */}
         {activeTab === 'weekly' && (
           <Text style={styles.countdownText}>🔒 CYCLES RESET IN: {weeklyCountdown.toUpperCase()}</Text>
         )}
         
         <ScrollView style={{ width: '100%', marginTop: 10 }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 100 }}>
           
-          {/* תצוגת משימות רגילות */}
           {activeTab === 'core' && MISSIONS.map((mission) => {
             const progress = checkProgress(mission);
             const isClaimed = claimedMissions.includes(mission.id);
@@ -195,7 +199,6 @@ export default function MissionsScreen() {
             );
           })}
 
-          {/* תצוגת משימות שבועיות */}
           {activeTab === 'weekly' && weeklyMissions.map((mission) => {
             const progress = checkWeeklyProgress(mission);
             const isClaimed = weeklyClaimed.includes(mission.id);

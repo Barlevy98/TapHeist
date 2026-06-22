@@ -293,7 +293,7 @@ export default function ShopScreen() {
                   </View>
                   <View>
                     <Text style={styles.itemName}>{world.name}</Text>
-                    <Text style={styles.itemSpecs}>Theme unlock</Text>
+                    <Text style={styles.itemSpecs}>{world.trait}</Text>
                   </View>
                 </View>
                 <View>

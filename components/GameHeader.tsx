@@ -2,6 +2,16 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import Svg, { Path, Polygon } from 'react-native-svg';
+import { formatNumber } from '../gameHelpers'; 
+
+// יצירת קומפוננטת יהלום פנימית כדי שנוכל להשתמש בה לצד הטקסטים
+const DiamondSvg = ({ color, size = 18 }: { color: string, size?: number }) => (
+  <Svg viewBox="0 0 24 24" width={size} height={size}>
+    <Path d="M6 5 L18 5 L22 10 L12 22 L2 10 Z" fill={color} />
+    <Path d="M6 5 L12 10 L18 5 M2 10 L22 10 M12 10 L12 22" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
+    <Path d="M6 5 L12 10 L2 10 Z" fill="rgba(255,255,255,0.4)" />
+  </Svg>
+);
 
 export default function GameHeader({
   activeWorld,
@@ -23,31 +33,50 @@ export default function GameHeader({
   combo,
   isDirectionWarning,
   nearMissText,
-  runDiamondsEarned // <-- V1.4: הוספנו את זה כדי להציג בעולם היהלומים
+  runDiamondsEarned,
+  currentRewardTier
 }: any) {
+
+  const displayColor = currentRewardTier?.color || '#00FFFF';
+
   return (
     <>
       <View style={styles.header}>
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
-          <Text style={styles.bankText}>${bank.toLocaleString()}</Text>
-          <Text style={styles.diamondText}>💎 {diamonds.toLocaleString()}</Text>
+          <Text style={styles.bankText}>${formatNumber(bank)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+             <DiamondSvg color="#00FFFF" size={14} />
+             <Text style={styles.diamondText}> {formatNumber(diamonds)}</Text>
+          </View>
         </View>
 
         {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
           <View style={styles.scoreContainer}>
             <View>
-              {/* V1.4: אם אנחנו בעולם היהלומים, מציגים את מד היהלומים ולא דולרים */}
               {activeWorld.id === 'diamond_world' ? (
-                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>💎 {runDiamondsEarned}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <DiamondSvg color={activeWorld.textPrimary} size={28} />
+                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}> {formatNumber(runDiamondsEarned)}</Text>
+                </View>
               ) : (
-                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>${score.toLocaleString()}</Text>
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>${formatNumber(score)}</Text>
               )}
-              <Animated.Text style={[styles.floatingScoreText, floatingScoreStyle, { color: isDiamondTarget ? '#00FFFF' : '#00FF66' }]}>
-                +{lastRewardEarned}{isDiamondTarget ? '💎' : '$'}
-              </Animated.Text>
+              
+              {/* הטקסט הקופץ מציג עכשיו את הוקטור של היהלום בצבע המדויק! */}
+              <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
+                <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? displayColor : '#00FF66' }]}>
+                  +{formatNumber(lastRewardEarned)}{!isDiamondTarget && '$'}
+                </Text>
+                {isDiamondTarget && (
+                  <View style={{ marginLeft: 3 }}>
+                    <DiamondSvg color={displayColor} size={18} />
+                  </View>
+                )}
+              </Animated.View>
+
             </View>
-            {multiplier > 1 && <Text style={styles.multiplierText}>x{multiplier} MULTIPLIER</Text>}
+            {multiplier > 1 && <Text style={styles.multiplierText}>x{formatNumber(multiplier)} MULTIPLIER</Text>}
           </View>
         )}
       </View>
@@ -98,9 +127,10 @@ const styles = StyleSheet.create({
   bankContainer: { alignItems: 'flex-start' },
   bankLabel: { fontSize: 14, fontWeight: 'bold', letterSpacing: 2 },
   bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900' },
-  diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', marginTop: 5 },
+  diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold' },
   scoreContainer: { alignItems: 'flex-end' },
   scoreText: { fontSize: 40, fontWeight: '900', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
+  floatingScoreContainer: { position: 'absolute', right: 0, top: -30, flexDirection: 'row', alignItems: 'center' },
   floatingScoreText: { fontSize: 24, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 5 },
   multiplierText: { color: '#FFCC00', fontSize: 14, fontWeight: 'bold', letterSpacing: 1, marginTop: -5 },
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
