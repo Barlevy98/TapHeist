@@ -63,7 +63,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>SYSTEM CONFIG</Text>
-        <Text style={styles.subtitle}>Version 1.0.0 (Build 3)</Text>
+        <Text style={styles.subtitle}>Version 1.4</Text>
 
         <View style={styles.menuContainer}>
           <View style={styles.toggleRow}>
