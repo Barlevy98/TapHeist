@@ -338,23 +338,19 @@ export function getHackerRank(heists: number, maxCombo: number): string {
   return 'SCRIPT KIDDIE';
 }
 
-// --- תיקון אבולוציית הצבעים במדויק לדרישות שלך! ---
 export function getRewardTier(nextCombo: number, worldId: string) {
   if (worldId === 'diamond_world') {
-    // עולם היהלומים: מטפס מהר יותר
-    if (nextCombo >= 25) return { gain: 4, color: '#FF3B30' }; // אדום
-    if (nextCombo >= 15) return { gain: 3, color: '#FFCC00' }; // זהב
-    if (nextCombo >= 10) return { gain: 2, color: '#C0C0C0' }; // כסף
-    return { gain: 1, color: '#00FFFF' }; // תכלת דיפולט
+    if (nextCombo >= 25) return { gain: 4, color: '#FF3B30' }; 
+    if (nextCombo >= 15) return { gain: 3, color: '#FFCC00' }; 
+    if (nextCombo >= 10) return { gain: 2, color: '#EBEBEB' }; // <- כסף מבריק (הוחלף מאפור עמום)
+    return { gain: 1, color: '#00FFFF' }; 
   } else if (worldId === 'nebula') {
-    // עולם ה-Nebula: מתחיל גבוה
     if (nextCombo >= 125) return { gain: 4, color: '#FF3B30' };
     return { gain: 3, color: '#FFCC00' };
   } else {
-    // שאר העולמות הרגילים
-    if (nextCombo >= 125) return { gain: 4, color: '#FF3B30' }; // אדום
-    if (nextCombo >= 100) return { gain: 3, color: '#FFCC00' }; // זהב
-    if (nextCombo >= 50)  return { gain: 2, color: '#C0C0C0' }; // כסף
-    return { gain: 1, color: '#00FFFF' }; // תכלת דיפולט
+    if (nextCombo >= 125) return { gain: 4, color: '#FF3B30' }; 
+    if (nextCombo >= 100) return { gain: 3, color: '#FFCC00' }; 
+    if (nextCombo >= 50)  return { gain: 2, color: '#EBEBEB' }; // <- כסף מבריק
+    return { gain: 1, color: '#00FFFF' }; 
   }
 }

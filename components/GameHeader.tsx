@@ -4,12 +4,10 @@ import Animated from 'react-native-reanimated';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { formatNumber } from '../gameHelpers'; 
 
-// יצירת קומפוננטת יהלום פנימית כדי שנוכל להשתמש בה לצד הטקסטים
+// קומפוננטת יהלום מלאה ומושלמת שתואמת ליהלום שעל הטבעת
 const DiamondSvg = ({ color, size = 18 }: { color: string, size?: number }) => (
   <Svg viewBox="0 0 24 24" width={size} height={size}>
-    <Path d="M6 5 L18 5 L22 10 L12 22 L2 10 Z" fill={color} />
-    <Path d="M6 5 L12 10 L18 5 M2 10 L22 10 M12 10 L12 22" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
-    <Path d="M6 5 L12 10 L2 10 Z" fill="rgba(255,255,255,0.4)" />
+    <Path d="M 5 5 L 19 5 L 24 11 L 12 23 L 0 11 Z" fill={color} />
   </Svg>
 );
 
@@ -63,7 +61,7 @@ export default function GameHeader({
                 <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>${formatNumber(score)}</Text>
               )}
               
-              {/* הטקסט הקופץ מציג עכשיו את הוקטור של היהלום בצבע המדויק! */}
+              {/* הטקסט הקופץ מציג עכשיו את היהלום המלא בצבע המדויק */}
               <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
                 <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? displayColor : '#00FF66' }]}>
                   +{formatNumber(lastRewardEarned)}{!isDiamondTarget && '$'}

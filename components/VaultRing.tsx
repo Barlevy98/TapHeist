@@ -30,7 +30,7 @@ export default function VaultRing({
         <Circle cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={activeWorld.vaultRing} strokeWidth={STROKE_WIDTH} fill="none" />
       </Svg>
 
-      {/* אזור המטרה (הירוק/יהלומים צבעוניים) */}
+      {/* אזור המטרה */}
       <Animated.View style={[styles.svg, targetOpacityStyle]} pointerEvents="none">
         <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
           <Circle
@@ -39,11 +39,10 @@ export default function VaultRing({
             origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
           />
           {isDiamondTarget && gameState === 'PLAYING' && (
-            <G x={CIRCLE_SIZE / 2 - 12} y={CIRCLE_SIZE / 2 - radius - 4}>
-              {/* צורת יהלום SVG מדויקת וקבועה - רק הצבע משתנה! */}
-              <Path d="M6 5 L18 5 L22 10 L12 22 L2 10 Z" fill={displayColor} />
-              <Path d="M6 5 L12 10 L18 5 M2 10 L22 10 M12 10 L12 22" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
-              <Path d="M6 5 L12 10 L2 10 Z" fill="rgba(255,255,255,0.4)" />
+            // מיקמתי את מרכז ה-G בדיוק על קו הטבעת (CIRCLE_SIZE / 2 - radius)
+            <G x={CIRCLE_SIZE / 2} y={CIRCLE_SIZE / 2 - radius}>
+              {/* יהלום שטוח, אטום, יושב בול על המסלול */}
+              <Path d="M -8 -8 L 8 -8 L 13 -1 L 0 13 L -13 -1 Z" fill={displayColor} />
             </G>
           )}
         </Svg>
