@@ -8,7 +8,8 @@ import { STORAGE_KEYS, loadHapticsEnabled, setHapticsEnabledCache, hapticImpact 
 import * as Haptics from 'expo-haptics';
 
 const SUPPORT_EMAIL = 'fixra.partners@gmail.com';
-const IOS_APP_ID = ''; // Set your App Store ID after listing goes live
+// --- ה-App ID הוכנס לכאן ---
+const IOS_APP_ID = '6771778269'; 
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function SettingsScreen() {
     if (await StoreReview.isAvailableAsync()) {
       await StoreReview.requestReview();
     } else if (IOS_APP_ID) {
+      // הקישור יוביל ישירות לעמוד שלכם ויפתח את חלונית הדירוג
       Linking.openURL(`https://apps.apple.com/app/id${IOS_APP_ID}?action=write-review`);
     } else {
       Linking.openURL('https://apps.apple.com/');
