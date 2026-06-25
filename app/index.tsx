@@ -128,7 +128,6 @@ export default function GameScreen() {
     : activeWorld;
 
   const currentRewardTier = getRewardTier(combo + 1, activeWorld.id);
-  const isOverheating = combo >= 100; 
 
   const shieldScale = useSharedValue(1);
   const freezeScale = useSharedValue(1);
@@ -210,6 +209,11 @@ export default function GameScreen() {
       setGameState('PLAYING');
       setHasRevivedThisRun(true);
       setPendingRevive(false);
+      
+      // תמיד נאפס שקיפות לבלוק כדי שלא ייעלם אחרי ה-Revive!
+      cancelAnimation(targetOpacity);
+      targetOpacity.value = 1;
+      
       randomizeTarget();
       startRotation(getSpeedDuration(combo), direction);
     }
@@ -376,9 +380,11 @@ export default function GameScreen() {
     }
 
     if (activeWorld.id === 'zk_vault' || isFirewallActive) {
+      cancelAnimation(targetOpacity);
       targetOpacity.value = 1;
       targetOpacity.value = withSequence(withTiming(1, { duration: 400 }), withTiming(0, { duration: 250 }));
     } else {
+      cancelAnimation(targetOpacity);
       targetOpacity.value = 1;
     }
   };
@@ -421,11 +427,16 @@ export default function GameScreen() {
     cancelAnimation(shieldScale); shieldScale.value = 1;
     cancelAnimation(freezeScale); freezeScale.value = 1;
     cancelAnimation(focusScale); focusScale.value = 1;
+    
+    // איפוס מוחלט של אטימות הבלוק נגד באג הבלוק הנעלם!
+    cancelAnimation(targetOpacity);
+    targetOpacity.value = 1;
 
     let currentFirewallCount = gamesSinceFirewall + 1;
     let triggerFirewall = false;
     
-    if (currentFirewallCount >= 5 && Math.random() < 0.20) {
+    // הורדת תדירות ה-Firewall למספר הגיוני
+    if (currentFirewallCount >= 10 && Math.random() < 0.15) {
       triggerFirewall = true;
       currentFirewallCount = 0;
     }
@@ -435,7 +446,6 @@ export default function GameScreen() {
     setIsFirewallActive(triggerFirewall);
 
     closeInventory();
-    targetOpacity.value = 1;
     
     if (triggerFirewall) {
       const seenFW = await SecureStore.getItemAsync(STORAGE_KEYS.firewallTutorial);
@@ -467,7 +477,8 @@ export default function GameScreen() {
       return;
     }
     
-    if (gamesSinceAd >= 4 && interstitialLoaded) {
+    // פרסומת כל 5 משחקים במקום 4
+    if (gamesSinceAd >= 5 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
     } else {
@@ -559,7 +570,8 @@ export default function GameScreen() {
     setGameState('CASHED_OUT');
     setMissionBadge(await countClaimableMissions());
 
-    if (gamesSinceAd >= 4 && interstitialLoaded) {
+    // פרסומת כל 5 משחקים במקום 4
+    if (gamesSinceAd >= 5 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
     }
@@ -599,7 +611,8 @@ export default function GameScreen() {
     setGameState('GAMEOVER');
     setMissionBadge(await countClaimableMissions());
 
-    if (gamesSinceAd >= 4 && interstitialLoaded) {
+    // פרסומת כל 5 משחקים
+    if (gamesSinceAd >= 5 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
     }
@@ -649,7 +662,12 @@ export default function GameScreen() {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
         updateAndPersistDiamonds(3);
         setRunDiamondsEarned((d) => d + 3);
-        playScoreAnimation(3);
+        
+        // תיקון Firewall: הוספנו כסף בנוסף ליהלומים הקבועים!
+        const reward = Math.floor(BASE_REWARD * multiplier * prestigeMult);
+        setScore((s) => s + reward);
+        
+        playScoreAnimation(reward);
       } else if (isDiamondTarget) {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
         updateAndPersistDiamonds(diamondGain);
@@ -673,10 +691,8 @@ export default function GameScreen() {
 
       const riskInterval = activeWorld.id === 'blood' ? 5 : 10;
       
-      // --- V1.4: הלוגיקה החדשה של עולם ה-Cyberpunk! אין עצירות! ---
       if (newCombo % riskInterval === 0 && activeWorld.id !== 'diamond_world') { 
         if (activeWorld.id === 'cyber') {
-          // מנגנון ה-Neon Overdrive: מכפיל אוטומטית וממשיך את המשחק בלי לעצור
           const newMult = multiplier * 2;
           setMultiplier(newMult);
           updateStatsRecord(STORAGE_KEYS.maxMultiplier, newMult);
@@ -684,7 +700,6 @@ export default function GameScreen() {
           showNearMiss(`NEON OVERDRIVE! x${newMult}`);
           await hapticNotification(Haptics.NotificationFeedbackType.Success);
         } else {
-          // עולמות רגילים: עוצרים ונכנסים למסך הבחירה
           await enterRiskMode(); 
           return; 
         }
@@ -751,26 +766,26 @@ export default function GameScreen() {
           nearMissText={nearMissText}
           runDiamondsEarned={runDiamondsEarned} 
           currentRewardTier={currentRewardTier} 
+          isFirewallActive={isFirewallActive}
         />
 
         <Pressable style={styles.touchArea} onPressIn={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
-          <Animated.View style={isOverheating && { shadowColor: '#FF3B30', shadowRadius: 20, shadowOpacity: 1 }}>
-            <VaultRing 
-              CIRCLE_SIZE={CIRCLE_SIZE}
-              STROKE_WIDTH={STROKE_WIDTH}
-              radius={radius}
-              activeWorld={displayWorld}
-              targetOpacityStyle={targetOpacityStyle}
-              isDiamondTarget={isDiamondTarget}
-              strokeDasharray={strokeDasharray}
-              strokeDashoffset={strokeDashoffset}
-              gameState={gameState}
-              hitFlashStyle={hitFlashStyle}
-              pointerAnimatedStyle={pointerAnimatedStyle}
-              activeSkin={activeSkin}
-              currentRewardTier={currentRewardTier} 
-            />
-          </Animated.View>
+          {/* הילה אדומה נמחקה */}
+          <VaultRing 
+            CIRCLE_SIZE={CIRCLE_SIZE}
+            STROKE_WIDTH={STROKE_WIDTH}
+            radius={radius}
+            activeWorld={displayWorld}
+            targetOpacityStyle={targetOpacityStyle}
+            isDiamondTarget={isDiamondTarget}
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            gameState={gameState}
+            hitFlashStyle={hitFlashStyle}
+            pointerAnimatedStyle={pointerAnimatedStyle}
+            activeSkin={activeSkin}
+            currentRewardTier={currentRewardTier} 
+          />
         </Pressable>
 
         <TacticalArsenal 

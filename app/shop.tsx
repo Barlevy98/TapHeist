@@ -13,7 +13,6 @@ import { getNextUnlock, getPowerUpInventory, addPowerUp } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
 
-// --- תיקון אנדרואיד: מפתח אמיתי לפרודקשן ---
 const adUnitId = __DEV__ 
   ? TestIds.REWARDED 
   : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : 'ca-app-pub-9244809721385064/5943204821'); 
@@ -45,7 +44,6 @@ export default function ShopScreen() {
     visible: false, name: '', type: '', id: ''
   });
 
-  // --- ליטוש UX: סטייט למודאל הדרכת בוסטים ראשוני ---
   const [powerUpTutorialVisible, setPowerUpTutorialVisible] = useState(false);
 
   const [adLoaded, setAdLoaded] = useState(rewardedAd.loaded);
@@ -67,7 +65,6 @@ export default function ShopScreen() {
           setInventory(prev => ({ ...prev, [pendingRewardId]: newVal }));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           
-          // בדיקת הדרכה
           checkPowerUpTutorial();
 
           setUnlockCelebration({ visible: true, name: powerUpName, type: 'powerup', id: pendingRewardId });
@@ -126,7 +123,6 @@ export default function ShopScreen() {
     } catch (e) { console.log('Error loading data', e); }
   };
 
-  // פונקציית בדיקה והפעלה של הדרכת בוסטים
   const checkPowerUpTutorial = async () => {
     const hasSeen = await SecureStore.getItemAsync('has_seen_powerup_tutorial');
     if (hasSeen !== 'true') {
@@ -187,7 +183,6 @@ export default function ShopScreen() {
         setInventory(prev => ({ ...prev, [item.id]: newVal }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         
-        // טריגר להדרכת בוסטים ראשונה
         checkPowerUpTutorial();
 
         setUnlockCelebration({ visible: true, name: item.name, type: 'powerup', id: item.id });
@@ -281,29 +276,63 @@ export default function ShopScreen() {
             );
           })}
 
-          {activeTab === 'worlds' && WORLDS.map((world) => {
-            const isUnlocked = unlockedWorlds.includes(world.id);
-            const isEquipped = equippedWorld === world.id;
-            
-            return (
-              <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.colorPreviewContainer, { shadowColor: world.textPrimary }]}>
-                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }} />
-                  </View>
-                  <View>
-                    <Text style={styles.itemName}>{world.name}</Text>
-                    <Text style={styles.itemSpecs}>{world.trait}</Text>
-                  </View>
-                </View>
-                <View>
-                  {isEquipped ? <Text style={[styles.itemStatus, { color: world.textPrimary }]}>EQUIPPED</Text> : 
-                   isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
-                   <Text style={[styles.itemStatus, { color: world.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>{world.currency === 'diamond' ? `💎 ${world.price.toLocaleString()}` : `$${world.price.toLocaleString()}`}</Text>}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {activeTab === 'worlds' && (
+            <>
+              {/* --- מפריד ויזואלי לעולמות של כסף --- */}
+              <Text style={styles.categoryDivider}>--- FIAT CURRENCY WORLDS ---</Text>
+              
+              {WORLDS.filter(w => w.currency === 'cash').map((world) => {
+                const isUnlocked = unlockedWorlds.includes(world.id);
+                const isEquipped = equippedWorld === world.id;
+                
+                return (
+                  <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={[styles.colorPreviewContainer, { shadowColor: world.textPrimary }]}>
+                        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }} />
+                      </View>
+                      <View style={{ paddingRight: 35 }}>
+                        <Text style={styles.itemName}>{world.name}</Text>
+                        <Text style={styles.itemSpecs}>{world.trait}</Text>
+                      </View>
+                    </View>
+                    <View style={{ position: 'absolute', right: 18 }}>
+                      {isEquipped ? <Text style={[styles.itemStatus, { color: world.textPrimary }]}>EQUIPPED</Text> : 
+                       isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
+                       <Text style={[styles.itemStatus, { color: '#00FF66' }]}>${world.price.toLocaleString()}</Text>}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* --- מפריד ויזואלי לעולמות של יהלומים --- */}
+              <Text style={styles.categoryDivider}>--- PREMIUM DIAMOND WORLDS ---</Text>
+              
+              {WORLDS.filter(w => w.currency === 'diamond').map((world) => {
+                const isUnlocked = unlockedWorlds.includes(world.id);
+                const isEquipped = equippedWorld === world.id;
+                
+                return (
+                  <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={[styles.colorPreviewContainer, { shadowColor: world.textPrimary }]}>
+                        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }} />
+                      </View>
+                      <View style={{ paddingRight: 35 }}>
+                        <Text style={styles.itemName}>{world.name}</Text>
+                        <Text style={styles.itemSpecs}>{world.trait}</Text>
+                      </View>
+                    </View>
+                    <View style={{ position: 'absolute', right: 18 }}>
+                      {isEquipped ? <Text style={[styles.itemStatus, { color: world.textPrimary }]}>EQUIPPED</Text> : 
+                       isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
+                       <Text style={[styles.itemStatus, { color: '#00FFFF' }]}>💎 {world.price.toLocaleString()}</Text>}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          )}
 
           {activeTab === 'powerups' && POWER_UPS.map((power) => {
             const currentStock = inventory[power.id] || 0;
@@ -350,7 +379,6 @@ export default function ShopScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* --- ליטוש UX: מודאל הדרכת בוסטים / ארסנל ראשוני --- */}
         {powerUpTutorialVisible && (
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { borderColor: '#00FFFF', padding: 25 }]}>
@@ -438,6 +466,7 @@ const styles = StyleSheet.create({
   tabButtonActive: { backgroundColor: '#FFCC00', borderColor: '#FFCC00' },
   tabText: { color: '#666', fontWeight: 'bold', fontSize: 12 },
   tabTextActive: { color: '#000', fontWeight: '900' },
+  categoryDivider: { color: '#666', fontSize: 12, fontWeight: 'bold', textAlign: 'center', marginVertical: 15, letterSpacing: 2 },
   shopItem: { width: '90%', backgroundColor: '#111', borderWidth: 1, borderColor: '#222', padding: 18, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   colorPreviewContainer: { marginRight: 15, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
   itemName: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },

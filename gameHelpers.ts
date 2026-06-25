@@ -39,11 +39,8 @@ export const STORAGE_KEYS = {
 } as const;
 
 export function formatNumber(num: number): string {
-  if (num >= 1e12) return (num / 1e12).toFixed(2).replace(/\.00$/, '') + 'T';
-  if (num >= 1e9) return (num / 1e9).toFixed(2).replace(/\.00$/, '') + 'B';
-  if (num >= 1e6) return (num / 1e6).toFixed(2).replace(/\.00$/, '') + 'M';
-  if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
-  return num.toString();
+  // בוטל פורמט הקיצור (2K). חוזרים לתצוגה מלאה ומדויקת!
+  return num.toLocaleString();
 }
 
 export async function getPowerUpInventory(): Promise<Record<string, number>> {
@@ -339,18 +336,23 @@ export function getHackerRank(heists: number, maxCombo: number): string {
 }
 
 export function getRewardTier(nextCombo: number, worldId: string) {
+  // צבעים מלוטשים, מדויקים ומרשימים!
+  const SILVER = '#E6E8FA'; // כסף מבריק ובהיר
+  const GOLD = '#FFD700';   // זהב קלאסי
+  const RED = '#FF2A2A';    // אדום עמוק ובוהק
+
   if (worldId === 'diamond_world') {
-    if (nextCombo >= 25) return { gain: 4, color: '#FF3B30' }; 
-    if (nextCombo >= 15) return { gain: 3, color: '#FFCC00' }; 
-    if (nextCombo >= 10) return { gain: 2, color: '#EBEBEB' }; // <- כסף מבריק (הוחלף מאפור עמום)
+    if (nextCombo >= 25) return { gain: 4, color: RED }; 
+    if (nextCombo >= 15) return { gain: 3, color: GOLD }; 
+    if (nextCombo >= 10) return { gain: 2, color: SILVER }; 
     return { gain: 1, color: '#00FFFF' }; 
   } else if (worldId === 'nebula') {
-    if (nextCombo >= 125) return { gain: 4, color: '#FF3B30' };
-    return { gain: 3, color: '#FFCC00' };
+    if (nextCombo >= 125) return { gain: 4, color: RED };
+    return { gain: 3, color: GOLD };
   } else {
-    if (nextCombo >= 125) return { gain: 4, color: '#FF3B30' }; 
-    if (nextCombo >= 100) return { gain: 3, color: '#FFCC00' }; 
-    if (nextCombo >= 50)  return { gain: 2, color: '#EBEBEB' }; // <- כסף מבריק
+    if (nextCombo >= 125) return { gain: 4, color: RED }; 
+    if (nextCombo >= 100) return { gain: 3, color: GOLD }; 
+    if (nextCombo >= 50)  return { gain: 2, color: SILVER }; 
     return { gain: 1, color: '#00FFFF' }; 
   }
 }

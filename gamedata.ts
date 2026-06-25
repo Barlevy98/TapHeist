@@ -20,7 +20,7 @@ export interface World {
   vaultRing: string;
   textPrimary: string;
   textSecondary: string;
-  trait: string; // <-- המאפיין החדש שיוצג בחנות
+  trait: string;
 }
 
 export interface Mission {
@@ -83,17 +83,16 @@ export const SKINS: Skin[] = [
 ];
 
 export const WORLDS: World[] = [
+  // --- CASH WORLDS ---
   { id: 'darknet', name: 'DARKNET (DEFAULT)', currency: 'cash', price: 0, bg: '#050505', vaultRing: '#1A1A1A', textPrimary: '#FFFFFF', textSecondary: '#666666', trait: 'Standard Heist' },
-  
   { id: 'retro', name: 'RETRO ARCADE', currency: 'cash', price: 3000, bg: '#1A0B2E', vaultRing: '#FF007F', textPrimary: '#FFD700', textSecondary: '#00FFFF', trait: '+20% Cash Multiplier, Slower Speed' },
-  
-  // --- V1.4: עודכן הרעיון של סייברפאנק בחנות ---
-  { id: 'cyber', name: 'CYBERPUNK NEON', currency: 'diamond', price: 750, bg: '#001A22', vaultRing: '#00FFFF', textPrimary: '#FFFF00', textSecondary: '#FF0055', trait: 'Neon Overdrive: Auto-Risk! No Pauses.' },
-  
-  { id: 'poh_vault', name: 'PROOF-OF-HISTORY', currency: 'diamond', price: 1000, bg: '#001008', vaultRing: '#004D2A', textPrimary: '#14F195', textSecondary: '#FFFFFF', trait: 'x5 Base Cash, Fast Speed' },
   { id: 'arctic', name: 'ARCTIC LAB', currency: 'cash', price: 8000, bg: '#F2F2F7', vaultRing: '#D1D1D6', textPrimary: '#1C1C1E', textSecondary: '#8E8E93', trait: 'Slippery Pointer (Extra Forgiving Hit Zone)' },
+  
+  // --- DIAMOND WORLDS ---
   { id: 'diamond_world', name: 'DIAMOND MINE', currency: 'diamond', price: 250, bg: '#050011', vaultRing: '#110022', textPrimary: '#00FFFF', textSecondary: '#660088', trait: 'Earn Diamonds Only (High Combo Yield)' },
   { id: 'zk_vault', name: 'ZERO-KNOWLEDGE', currency: 'diamond', price: 500, bg: '#09090B', vaultRing: '#27272A', textPrimary: '#A1A1AA', textSecondary: '#52525B', trait: 'Invisible Target Zone After First Rotation' },
+  { id: 'cyber', name: 'CYBERPUNK NEON', currency: 'diamond', price: 750, bg: '#001A22', vaultRing: '#00FFFF', textPrimary: '#FFFF00', textSecondary: '#FF0055', trait: 'Neon Overdrive: Auto-Risk! No Pauses.' },
+  { id: 'poh_vault', name: 'PROOF-OF-HISTORY', currency: 'diamond', price: 1000, bg: '#001008', vaultRing: '#004D2A', textPrimary: '#14F195', textSecondary: '#FFFFFF', trait: 'x5 Base Cash, Fast Speed' },
   { id: 'blood', name: 'BLOOD MOON', currency: 'diamond', price: 1500, bg: '#1A0000', vaultRing: '#330000', textPrimary: '#FF3B30', textSecondary: '#800000', trait: 'Extreme: Risk Mode Every 5 Hits' },
   { id: 'nebula', name: 'DEEP NEBULA', currency: 'diamond', price: 4000, bg: '#020210', vaultRing: '#0D1B2A', textPrimary: '#E0AA3E', textSecondary: '#415A77', trait: 'Ultra Fast, Base 3x Diamonds Per Hit' },
 ];

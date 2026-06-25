@@ -4,7 +4,6 @@ import Animated from 'react-native-reanimated';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { formatNumber } from '../gameHelpers'; 
 
-// קומפוננטת יהלום מלאה ומושלמת שתואמת ליהלום שעל הטבעת
 const DiamondSvg = ({ color, size = 18 }: { color: string, size?: number }) => (
   <Svg viewBox="0 0 24 24" width={size} height={size}>
     <Path d="M 5 5 L 19 5 L 24 11 L 12 23 L 0 11 Z" fill={color} />
@@ -32,7 +31,8 @@ export default function GameHeader({
   isDirectionWarning,
   nearMissText,
   runDiamondsEarned,
-  currentRewardTier
+  currentRewardTier,
+  isFirewallActive
 }: any) {
 
   const displayColor = currentRewardTier?.color || '#00FFFF';
@@ -42,10 +42,10 @@ export default function GameHeader({
       <View style={styles.header}>
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
-          <Text style={styles.bankText}>${formatNumber(bank)}</Text>
+          <Text style={styles.bankText} adjustsFontSizeToFit numberOfLines={1}>${formatNumber(bank)}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
              <DiamondSvg color="#00FFFF" size={14} />
-             <Text style={styles.diamondText}> {formatNumber(diamonds)}</Text>
+             <Text style={styles.diamondText} adjustsFontSizeToFit numberOfLines={1}> {formatNumber(diamonds)}</Text>
           </View>
         </View>
 
@@ -55,13 +55,12 @@ export default function GameHeader({
               {activeWorld.id === 'diamond_world' ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
                   <DiamondSvg color={activeWorld.textPrimary} size={28} />
-                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}> {formatNumber(runDiamondsEarned)}</Text>
+                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]} adjustsFontSizeToFit numberOfLines={1}> {formatNumber(runDiamondsEarned)}</Text>
                 </View>
               ) : (
-                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]}>${formatNumber(score)}</Text>
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]} adjustsFontSizeToFit numberOfLines={1}>${formatNumber(score)}</Text>
               )}
               
-              {/* הטקסט הקופץ מציג עכשיו את היהלום המלא בצבע המדויק */}
               <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
                 <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? displayColor : '#00FF66' }]}>
                   +{formatNumber(lastRewardEarned)}{!isDiamondTarget && '$'}
@@ -112,7 +111,9 @@ export default function GameHeader({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Text style={[styles.comboText, { color: activeSkin.color }]}>{combo} COMBO</Text>
           </View>
-          {isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
+          {isDirectionWarning && !isFirewallActive && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
+          {/* הוספת התראת ה-Firewall שתשב בולטת על המסך! */}
+          {isFirewallActive && <Text style={[styles.warningText, { color: '#FF3B30', fontSize: 16 }]}>🚨 DANGER ZONE: FIREWALL 🚨</Text>}
           {nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
         </View>
       )}
@@ -122,12 +123,12 @@ export default function GameHeader({
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', top: 20, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, zIndex: 10 },
-  bankContainer: { alignItems: 'flex-start' },
+  bankContainer: { alignItems: 'flex-start', flex: 1, paddingRight: 10 },
   bankLabel: { fontSize: 14, fontWeight: 'bold', letterSpacing: 2 },
-  bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900' },
-  diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold' },
-  scoreContainer: { alignItems: 'flex-end' },
-  scoreText: { fontSize: 40, fontWeight: '900', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
+  bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900', width: '100%' },
+  diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', width: '100%' },
+  scoreContainer: { alignItems: 'flex-end', flex: 1, paddingLeft: 10 },
+  scoreText: { fontSize: 40, fontWeight: '900', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15, width: '100%', textAlign: 'right' },
   floatingScoreContainer: { position: 'absolute', right: 0, top: -30, flexDirection: 'row', alignItems: 'center' },
   floatingScoreText: { fontSize: 24, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 5 },
   multiplierText: { color: '#FFCC00', fontSize: 14, fontWeight: 'bold', letterSpacing: 1, marginTop: -5 },

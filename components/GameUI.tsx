@@ -92,11 +92,10 @@ export default function GameUI({
           </View>
         )}
 
-        {/* --- מסך ההדרכה החדש של פריצת חומת האש --- */}
         {gameState === 'FIREWALL_TUTORIAL' && (
           <View style={styles.tutorialContainer}>
             <Text style={[styles.tutorialTitle, { color: '#FFCC00' }]}>🔥 FIREWALL ENCOUNTERED 🔥</Text>
-            <Text style={styles.tutorialText}>The system has detected your intrusion! The zone is shrinking and rotating faster. Every hit guarantees 3 Diamonds.</Text>
+            <Text style={styles.tutorialText}>The system has detected your intrusion! The zone is shrinking and rotating faster. Every hit guarantees 3 Diamonds AND massive Cash.</Text>
             <Text style={[styles.tutorialTap, { color: '#FF3B30' }]}>TAP TO START BREACH</Text>
           </View>
         )}
@@ -119,9 +118,15 @@ export default function GameUI({
                 <TouchableOpacity onPress={dismissRiskTutorial} style={styles.riskTutorialBtn}><Text style={styles.riskTutorialBtnText}>GOT IT</Text></TouchableOpacity>
               </View>
             )}
-            {/* שימוש ב-formatNumber כדי למנוע גלישת טקסט בכפתורים */}
-            <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}><Text style={styles.cashOutText}>CASH OUT (${formatNumber(score)})</Text></TouchableOpacity>
-            <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}><Text style={styles.riskItText}>RISK IT (x{formatNumber(multiplier * 2)})</Text></TouchableOpacity>
+            
+            {/* הכפתורים עכשיו מכווצים את הטקסט אוטומטית במקום לחתוך אותו! */}
+            <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}>
+              <Text style={styles.cashOutText} adjustsFontSizeToFit numberOfLines={1}>CASH OUT (${formatNumber(score)})</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}>
+              <Text style={styles.riskItText} adjustsFontSizeToFit numberOfLines={1}>RISK IT (x{formatNumber(multiplier * 2)})</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -138,9 +143,9 @@ export default function GameUI({
           <Animated.View style={[styles.gameOverContainer, successPulseStyle]}>
             <Text style={styles.successText}>HACK SUCCESSFUL</Text>
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Secured 💎 {formatNumber(runDiamondsEarned)} to Vault</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]} adjustsFontSizeToFit numberOfLines={1}>Secured 💎 {formatNumber(runDiamondsEarned)} to Vault</Text>
             ) : (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Transferred ${formatNumber(score)} to Bank</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]} adjustsFontSizeToFit numberOfLines={1}>Transferred ${formatNumber(score)} to Bank</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>NEXT HEIST</Text></TouchableOpacity>
@@ -154,9 +159,9 @@ export default function GameUI({
           <View style={styles.gameOverContainer}>
             <Text style={styles.gameOverText}>SYSTEM LOCKED</Text>
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.scrappedText, { color: '#00FFFF' }]}>Kept 100% of mined gems: 💎 {formatNumber(runDiamondsEarned)}</Text>
+              <Text style={[styles.scrappedText, { color: '#00FFFF' }]} adjustsFontSizeToFit numberOfLines={1}>Kept 100% of mined gems: 💎 {formatNumber(runDiamondsEarned)}</Text>
             ) : (
-              <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${formatNumber(consolationPrize)}</Text>
+              <Text style={styles.scrappedText} adjustsFontSizeToFit numberOfLines={1}>Scrapped 25% of earnings: +${formatNumber(consolationPrize)}</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>RETRY</Text></TouchableOpacity>
@@ -216,16 +221,16 @@ const styles = StyleSheet.create({
   riskTutorialText: { color: '#FFF', fontSize: 13, textAlign: 'center', marginBottom: 10 },
   riskTutorialBtn: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 20, backgroundColor: '#FFCC00', borderRadius: 16 },
   riskTutorialBtnText: { color: '#000', fontWeight: '900', fontSize: 12 },
-  cashOutButton: { backgroundColor: '#00FF66', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center', marginBottom: 15 },
-  cashOutText: { color: '#0A0A0A', fontSize: 18, fontWeight: '900' },
-  riskItButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
-  riskItText: { color: '#FF3B30', fontSize: 18, fontWeight: '900' },
+  cashOutButton: { backgroundColor: '#00FF66', paddingVertical: 15, paddingHorizontal: 15, width: '100%', borderRadius: 30, alignItems: 'center', marginBottom: 15 },
+  cashOutText: { color: '#0A0A0A', fontSize: 18, fontWeight: '900', width: '100%', textAlign: 'center' },
+  riskItButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', paddingVertical: 15, paddingHorizontal: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
+  riskItText: { color: '#FF3B30', fontSize: 18, fontWeight: '900', width: '100%', textAlign: 'center' },
   gameOverContainer: { alignItems: 'center', width: '100%' },
   gameOverText: { fontSize: 30, color: '#FF3B30', fontWeight: '900', letterSpacing: 3, textAlign: 'center' },
   successText: { fontSize: 30, color: '#00FF66', fontWeight: '900', letterSpacing: 2, textAlign: 'center' },
-  scrappedText: { fontSize: 16, color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold', textAlign: 'center' },
+  scrappedText: { fontSize: 16, color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 10 },
   runStatsText: { color: '#AAA', fontSize: 13, marginBottom: 16, textAlign: 'center' },
-  finalScoreText: { fontSize: 18, marginTop: 5, marginBottom: 8 },
+  finalScoreText: { fontSize: 18, marginTop: 5, marginBottom: 8, paddingHorizontal: 10, textAlign: 'center' },
   retryButton: { backgroundColor: '#007AFF', paddingVertical: 15, borderRadius: 30, width: 180, alignItems: 'center' },
   retryButtonText: { color: '#FFF', fontSize: 18, fontWeight: '900' },
   shareButton: { backgroundColor: '#FFCC00', paddingVertical: 12, borderRadius: 30, width: 180, alignItems: 'center', marginTop: 12 },
