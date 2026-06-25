@@ -4,56 +4,55 @@ Tap Heist is a fast-paced idle tapping game built with React Native and Expo. Ta
 
 ## Overview
 
-The current build centers on a tighter heist loop than the original README described. The game now includes rotating reward tiers, firewall encounters, prestige offers, weekly challenge rotation, and a larger cosmetic catalog across both cash and diamond economies.
+Tap Heist combines a simple tap mechanic with layered progression, cosmetics, and world-specific modifiers. Players build combos, grow their bank, unlock new worlds and pointer skins, and push for bigger multipliers while managing risk.
+
+## Current Release
+
+- Version 1.4 is live on the App Store.
+- The game includes a full progression loop with missions, weekly challenges, prestige offers, and a large cosmetics catalog.
+- The experience is designed around short, replayable runs with reward tiers, risk decisions, and special worlds.
 
 ## Core Gameplay
 
-- Tap when the pointer overlaps the target zone on the vault ring.
+- Tap the vault ring when the pointer overlaps the active target zone.
 - Successful taps increase your combo and multiplier.
-- Runs earn cash by default, while special diamond targets can pay out premium rewards.
-- Missing the zone ends the run, with part of the run value converted into banked cash.
-- Risk mode appears during play and lets you cash out or push for a bigger multiplier.
+- Cash runs reward cash by default, while certain targets and worlds can award diamonds.
+- Missing the target ends the run, though part of the run value is banked as cash.
+- Risk mode can appear during a run, giving you the option to cash out or push for a larger reward.
+- Rewarded ads can revive a run after a miss.
 
-## Progression
+## Progression Systems
 
-- Daily rewards give cash every day, with a streak bonus and a diamond bonus every third streak claim.
+- Daily rewards grant cash and include streak bonuses, with diamond rewards on every third streak claim.
 - Core missions track combo, multiplier, and bank milestones.
-- Weekly missions rotate three active objectives each week and reset on Sunday.
-- Hacker ranks are based on total heists and best combo, with higher tiers unlocked as you progress.
-- Prestige offers appear when your bank reaches a tier threshold and grant permanent multiplier growth.
+- Weekly missions rotate a set of active objectives each week.
+- Hacker ranks unlock as you progress through total heists and best combo performance.
+- Prestige offers appear when your bank reaches certain thresholds and provide permanent multiplier growth.
 
 ## Customization
 
-- The shop now includes 26 pointer skins.
-- Skins are split across cash and diamond purchases, with multiple pointer shapes and gradient variants.
-- Nine worlds are available, each with its own visual theme and gameplay trait.
-- The current worlds include Darknet, Retro Arcade, Arctic Lab, Cyberpunk Neon, Proof-of-History, Diamond Mine, Zero-Knowledge, Blood Moon, and Deep Nebula.
+- The shop includes 26 pointer skins split across cash and diamond purchases.
+- Skins include multiple shapes and gradient variants.
+- Nine worlds are available, each with a distinct visual style and gameplay trait.
+- The current worlds are Darknet, Retro Arcade, Arctic Lab, Cyberpunk Neon, Proof-of-History, Diamond Mine, Zero-Knowledge, Blood Moon, and Deep Nebula.
 
 ## Power-Ups
 
-Three consumables are available in the tactical arsenal:
+The tactical arsenal includes three consumables:
 
 - Smart Shield blocks one miss.
 - Time Freeze slows the pointer for three seconds.
 - Precision Focus doubles the hit zone for five taps.
 
-Power-ups can be bought with cash or diamonds, and some can also be earned from rewarded ads.
+Power-ups can be purchased with cash or diamonds, and some can also be earned from rewarded ads.
 
-## UI And Screens
-
-- The main screen shows the bank, diamonds, current run score, combo, multiplier, and active boost icons.
-- The vault ring uses SVG-based pointer skins and reward visuals.
-- The missions screen separates core missions from weekly challenges.
-- The shop screen separates pointers, worlds, and power-ups, and shows the next unlock target.
-- The stats and settings screens remain part of the app navigation.
-
-## Gameplay Notes
+## Game Systems
 
 - The base tap reward is 4 cash per hit.
-- Diamond targets appear during play and use a distinct reward tier color flow.
-- Firewall mode shrinks the active zone and ramps difficulty.
-- Reward tiers shift as combo grows, including special scaling for the Diamond Mine and Nebula worlds.
-- Runs can be revived with rewarded ads.
+- Diamond targets appear during runs and use a distinct reward tier color flow.
+- Firewall mode shrinks the active zone and increases difficulty.
+- Reward tiers shift as combo grows, with special scaling for certain worlds.
+- The main UI shows bank balance, diamonds, current run score, combo, multiplier, and active boosts.
 
 ## Tech Stack
 
@@ -69,7 +68,7 @@ Power-ups can be bought with cash or diamonds, and some can also be earned from 
 
 ## Data Storage
 
-Game state is stored locally on the device. Secure Store is used for bank, diamonds, unlocks, missions, inventory, streaks, stats, and settings.
+Game progress is stored locally on the device so the game can preserve progress without requiring a server.
 
 ## Installation
 
@@ -84,15 +83,15 @@ Game state is stored locally on the device. Secure Store is used for bank, diamo
 1. Clone the repository.
 2. Install dependencies with npm install.
 3. Start the app with npm start.
-4. Run on iOS, Android, or web from the Expo tooling.
+4. Run it on iOS, Android, or web through the Expo tooling.
 
 ### Production Builds
 
-Use EAS to build for iOS or Android.
+Use EAS to build and publish iOS or Android releases.
 
 ## Project Structure
 
-```
+```text
 tapheist/
 ├── app/
 │   ├── _layout.tsx
@@ -117,3 +116,5 @@ tapheist/
 ## License
 
 This project is proprietary. All rights reserved.
+
+Developed by FIXRA Group.
