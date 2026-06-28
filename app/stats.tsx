@@ -50,31 +50,41 @@ export default function StatsScreen() {
 
         <View style={styles.card}>
           <Text style={styles.statLabel}>BEST COMBO</Text>
-          <Text style={styles.statValue}>{stats.maxCombo}</Text>
+          <View style={styles.valueContainer}>
+            <Text style={styles.statValue} adjustsFontSizeToFit numberOfLines={1}>{stats.maxCombo.toLocaleString()}</Text>
+          </View>
         </View>
         <View style={styles.card}>
           <Text style={styles.statLabel}>PEAK MULTIPLIER</Text>
-          <Text style={styles.statValue}>x{stats.maxMultiplier}</Text>
+          <View style={styles.valueContainer}>
+            <Text style={styles.statValue} adjustsFontSizeToFit numberOfLines={1}>x{stats.maxMultiplier.toLocaleString()}</Text>
+          </View>
         </View>
         
-        {/* --- הסטטיסטיקות החדשות שהחלפנו --- */}
         <View style={styles.card}>
           <Text style={styles.statLabel}>BEST HEIST (CASH)</Text>
-          <Text style={[styles.statValue, { color: '#00FF66' }]}>${stats.bestRunCash.toLocaleString()}</Text>
+          <View style={styles.valueContainer}>
+            <Text style={[styles.statValue, { color: '#00FF66' }]} adjustsFontSizeToFit numberOfLines={1}>${stats.bestRunCash.toLocaleString()}</Text>
+          </View>
         </View>
         <View style={styles.card}>
-          <Text style={styles.statLabel}>BEST HEIST (DIAMONDS)</Text>
-          <Text style={[styles.statValue, { color: '#00FFFF' }]}>💎 {stats.bestRunDiamonds.toLocaleString()}</Text>
+          <Text style={styles.statLabel}>BEST HEIST (GEMS)</Text>
+          <View style={styles.valueContainer}>
+            <Text style={[styles.statValue, { color: '#00FFFF' }]} adjustsFontSizeToFit numberOfLines={1}>💎 {stats.bestRunDiamonds.toLocaleString()}</Text>
+          </View>
         </View>
-        {/* --------------------------------- */}
 
         <View style={styles.card}>
           <Text style={styles.statLabel}>TOTAL HEISTS</Text>
-          <Text style={styles.statValue}>{stats.totalHeists.toLocaleString()}</Text>
+          <View style={styles.valueContainer}>
+            <Text style={styles.statValue} adjustsFontSizeToFit numberOfLines={1}>{stats.totalHeists.toLocaleString()}</Text>
+          </View>
         </View>
         <View style={styles.card}>
           <Text style={styles.statLabel}>DAILY STREAK</Text>
-          <Text style={[styles.statValue, { color: '#FFCC00' }]}>{stats.streak} days</Text>
+          <View style={styles.valueContainer}>
+            <Text style={[styles.statValue, { color: '#FFCC00' }]} adjustsFontSizeToFit numberOfLines={1}>{stats.streak} days</Text>
+          </View>
         </View>
 
         <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
@@ -102,8 +112,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  statLabel: { color: '#AAA', fontSize: 13, fontWeight: 'bold', letterSpacing: 1 },
-  statValue: { color: '#FFF', fontSize: 20, fontWeight: '900' },
+  statLabel: { color: '#AAA', fontSize: 13, fontWeight: 'bold', letterSpacing: 1, flex: 1 },
+  valueContainer: { flex: 1, alignItems: 'flex-end' },
+  statValue: { color: '#FFF', fontSize: 20, fontWeight: '900', textAlign: 'right', width: '100%' },
   closeButton: {
     marginTop: 'auto',
     marginBottom: 40,

@@ -4,9 +4,10 @@ import Animated from 'react-native-reanimated';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { formatNumber } from '../gameHelpers'; 
 
-const DiamondSvg = ({ color, size = 18 }: { color: string, size?: number }) => (
+// הוספנו תמיכה ב-isBlack כדי לייצר ליהלום קו מתאר לבן כשהוא שחור
+const DiamondSvg = ({ color, size = 18, isBlack = false }: { color: string, size?: number, isBlack?: boolean }) => (
   <Svg viewBox="0 0 24 24" width={size} height={size}>
-    <Path d="M 5 5 L 19 5 L 24 11 L 12 23 L 0 11 Z" fill={color} />
+    <Path d="M 5 5 L 19 5 L 24 11 L 12 23 L 0 11 Z" fill={color} stroke={isBlack ? "#FFFFFF" : "none"} strokeWidth={isBlack ? 1.5 : 0} />
   </Svg>
 );
 
@@ -36,6 +37,7 @@ export default function GameHeader({
 }: any) {
 
   const displayColor = currentRewardTier?.color || '#00FFFF';
+  const isBlack = currentRewardTier?.isBlack;
 
   return (
     <>
@@ -62,12 +64,12 @@ export default function GameHeader({
               )}
               
               <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
-                <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? displayColor : '#00FF66' }]}>
+                <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? (isBlack ? '#FFF' : displayColor) : '#00FF66' }]}>
                   +{formatNumber(lastRewardEarned)}{!isDiamondTarget && '$'}
                 </Text>
                 {isDiamondTarget && (
                   <View style={{ marginLeft: 3 }}>
-                    <DiamondSvg color={displayColor} size={18} />
+                    <DiamondSvg color={displayColor} size={18} isBlack={isBlack} />
                   </View>
                 )}
               </Animated.View>
@@ -106,15 +108,14 @@ export default function GameHeader({
         </View>
       )}
 
-      {gameState === 'PLAYING' && combo > 0 && (
+      {(gameState === 'PLAYING' || gameState === 'RISK') && combo > 0 && (
         <View style={styles.comboHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Text style={[styles.comboText, { color: activeSkin.color }]}>{combo} COMBO</Text>
           </View>
-          {isDirectionWarning && !isFirewallActive && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
-          {/* הוספת התראת ה-Firewall שתשב בולטת על המסך! */}
-          {isFirewallActive && <Text style={[styles.warningText, { color: '#FF3B30', fontSize: 16 }]}>🚨 DANGER ZONE: FIREWALL 🚨</Text>}
-          {nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
+          {gameState === 'PLAYING' && isDirectionWarning && !isFirewallActive && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
+          {gameState === 'PLAYING' && isFirewallActive && <Text style={[styles.warningText, { color: '#FF3B30', fontSize: 16 }]}>🚨 DANGER ZONE: FIREWALL 🚨</Text>}
+          {gameState === 'PLAYING' && nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
         </View>
       )}
     </>

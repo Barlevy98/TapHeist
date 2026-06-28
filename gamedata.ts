@@ -83,12 +83,10 @@ export const SKINS: Skin[] = [
 ];
 
 export const WORLDS: World[] = [
-  // --- CASH WORLDS ---
   { id: 'darknet', name: 'DARKNET (DEFAULT)', currency: 'cash', price: 0, bg: '#050505', vaultRing: '#1A1A1A', textPrimary: '#FFFFFF', textSecondary: '#666666', trait: 'Standard Heist' },
   { id: 'retro', name: 'RETRO ARCADE', currency: 'cash', price: 3000, bg: '#1A0B2E', vaultRing: '#FF007F', textPrimary: '#FFD700', textSecondary: '#00FFFF', trait: '+20% Cash Multiplier, Slower Speed' },
   { id: 'arctic', name: 'ARCTIC LAB', currency: 'cash', price: 8000, bg: '#F2F2F7', vaultRing: '#D1D1D6', textPrimary: '#1C1C1E', textSecondary: '#8E8E93', trait: 'Slippery Pointer (Extra Forgiving Hit Zone)' },
   
-  // --- DIAMOND WORLDS ---
   { id: 'diamond_world', name: 'DIAMOND MINE', currency: 'diamond', price: 250, bg: '#050011', vaultRing: '#110022', textPrimary: '#00FFFF', textSecondary: '#660088', trait: 'Earn Diamonds Only (High Combo Yield)' },
   { id: 'zk_vault', name: 'ZERO-KNOWLEDGE', currency: 'diamond', price: 500, bg: '#09090B', vaultRing: '#27272A', textPrimary: '#A1A1AA', textSecondary: '#52525B', trait: 'Invisible Target Zone After First Rotation' },
   { id: 'cyber', name: 'CYBERPUNK NEON', currency: 'diamond', price: 750, bg: '#001A22', vaultRing: '#00FFFF', textPrimary: '#FFFF00', textSecondary: '#FF0055', trait: 'Neon Overdrive: Auto-Risk! No Pauses.' },
@@ -103,11 +101,24 @@ export const POWER_UPS: PowerUp[] = [
   { id: 'precision_focus', name: 'PRECISION FOCUS', desc: 'Double hit-zone size for 5 taps.', price: 15, currency: 'diamond', color: '#FFCC00' },
 ];
 
+// --- מאגר שבועי ענק. בכל יום ראשון נבחרות 3 משימות מפה באופן אקראי ---
 export const WEEKLY_MISSIONS: WeeklyMission[] = [
-  { id: 'w_combo_25', title: 'WEEKLY SPEEDRUN', desc: 'Reach a Combo of 25 this week', type: 'combo', target: 25, rewardType: 'cash', rewardValue: 12000 },
-  { id: 'w_mult_16', title: 'EMERGENCY LEVERAGE', desc: 'Reach a x16 Multiplier this week', type: 'multiplier', target: 16, rewardType: 'diamond', rewardValue: 100 },
-  { id: 'w_heists_10', title: 'THE GHOST CREW', desc: 'Complete 10 successful heists this week', type: 'weekly_heists', target: 10, rewardType: 'cash', rewardValue: 20000 },
+  { id: 'w_combo_15', title: 'WARM UP WEEK', desc: 'Reach a Combo of 15 this week', type: 'combo', target: 15, rewardType: 'cash', rewardValue: 8000 },
+  { id: 'w_combo_25', title: 'WEEKLY SPEEDRUN', desc: 'Reach a Combo of 25 this week', type: 'combo', target: 25, rewardType: 'cash', rewardValue: 15000 },
   { id: 'w_combo_35', title: 'CRITICAL OVERRIDE', desc: 'Reach a Combo of 35 this week', type: 'combo', target: 35, rewardType: 'diamond', rewardValue: 200 },
+  { id: 'w_combo_50', title: 'THE PERFECT STORM', desc: 'Reach a Combo of 50 this week', type: 'combo', target: 50, rewardType: 'diamond', rewardValue: 400 },
+  { id: 'w_combo_75', title: 'CYBER LEGEND', desc: 'Reach a Combo of 75 this week', type: 'combo', target: 75, rewardType: 'diamond', rewardValue: 800 },
+  
+  { id: 'w_mult_8', title: 'RISING STAKES', desc: 'Reach a x8 Multiplier this week', type: 'multiplier', target: 8, rewardType: 'cash', rewardValue: 10000 },
+  { id: 'w_mult_16', title: 'EMERGENCY LEVERAGE', desc: 'Reach a x16 Multiplier this week', type: 'multiplier', target: 16, rewardType: 'diamond', rewardValue: 100 },
+  { id: 'w_mult_32', title: 'HIGH ROLLER WEEK', desc: 'Reach a x32 Multiplier this week', type: 'multiplier', target: 32, rewardType: 'diamond', rewardValue: 350 },
+  { id: 'w_mult_64', title: 'GOD OF RISK', desc: 'Reach a x64 Multiplier this week', type: 'multiplier', target: 64, rewardType: 'diamond', rewardValue: 700 },
+  
+  { id: 'w_heists_5', title: 'THE APPRENTICE', desc: 'Complete 5 successful heists this week', type: 'weekly_heists', target: 5, rewardType: 'cash', rewardValue: 5000 },
+  { id: 'w_heists_10', title: 'THE GHOST CREW', desc: 'Complete 10 successful heists this week', type: 'weekly_heists', target: 10, rewardType: 'cash', rewardValue: 20000 },
+  { id: 'w_heists_25', title: 'WORKAHOLIC', desc: 'Complete 25 successful heists this week', type: 'weekly_heists', target: 25, rewardType: 'diamond', rewardValue: 50 },
+  { id: 'w_heists_50', title: 'INSOMNIAC HACKER', desc: 'Complete 50 successful heists this week', type: 'weekly_heists', target: 50, rewardType: 'diamond', rewardValue: 150 },
+  { id: 'w_heists_100', title: 'GRIND NEVER STOPS', desc: 'Complete 100 successful heists this week', type: 'weekly_heists', target: 100, rewardType: 'diamond', rewardValue: 500 },
 ];
 
 export const MISSIONS: Mission[] = [

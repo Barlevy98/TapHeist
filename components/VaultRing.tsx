@@ -17,10 +17,14 @@ export default function VaultRing({
   hitFlashStyle,
   pointerAnimatedStyle,
   activeSkin,
-  currentRewardTier
+  currentRewardTier 
 }: any) {
   
   const displayColor = currentRewardTier?.color || '#00FFFF';
+  const isBlack = currentRewardTier?.isBlack;
+  
+  // הבלוק יהיה לבן כדי לבלוט אם היהלום הוא שחור
+  const blockColor = isBlack ? '#FFFFFF' : (isDiamondTarget ? displayColor : '#00FF66');
 
   return (
     <View style={[styles.vaultContainer, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
@@ -34,15 +38,13 @@ export default function VaultRing({
       <Animated.View style={[styles.svg, targetOpacityStyle]} pointerEvents="none">
         <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
           <Circle
-            cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={isDiamondTarget ? displayColor : '#00FF66'}
+            cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={blockColor}
             strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
             origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
           />
           {isDiamondTarget && gameState === 'PLAYING' && (
-            // מיקמתי את מרכז ה-G בדיוק על קו הטבעת (CIRCLE_SIZE / 2 - radius)
             <G x={CIRCLE_SIZE / 2} y={CIRCLE_SIZE / 2 - radius}>
-              {/* יהלום שטוח, אטום, יושב בול על המסלול */}
-              <Path d="M -8 -8 L 8 -8 L 13 -1 L 0 13 L -13 -1 Z" fill={displayColor} />
+              <Path d="M -8 -8 L 8 -8 L 13 -1 L 0 13 L -13 -1 Z" fill={displayColor} stroke={isBlack ? "#FFFFFF" : "none"} strokeWidth={isBlack ? 1.5 : 0} />
             </G>
           )}
         </Svg>

@@ -39,6 +39,9 @@ export default function ShopScreen() {
     smart_shield: 0, time_freeze: 0, precision_focus: 0
   });
 
+  // מנגנון חדש - כמות לבחירה לכל PowerUp
+  const [buyQuantities, setBuyQuantities] = useState<Record<string, number>>({});
+
   const [errorModal, setErrorModal] = useState({ visible: false, missingAmount: 0, currency: '' });
   const [unlockCelebration, setUnlockCelebration] = useState<{ visible: boolean; name: string; type: string; id: string }>({
     visible: false, name: '', type: '', id: ''
@@ -131,7 +134,25 @@ export default function ShopScreen() {
     }
   };
 
-  const handlePurchase = async (item: Skin | World | PowerUp, type: 'skin' | 'world' | 'powerup') => {
+  const getQty = (id: string) => buyQuantities[id] || 1;
+  
+  const updateQty = (id: string, delta: number, price: number, currency: string) => {
+    let q = getQty(id) + delta;
+    if (q < 1) q = 1;
+    const funds = currency === 'cash' ? bank : diamonds;
+    const max = Math.floor(funds / price);
+    if (q > max && max > 0) q = max; 
+    setBuyQuantities(prev => ({ ...prev, [id]: q }));
+  };
+
+  const setMaxQty = (id: string, price: number, currency: string) => {
+    const funds = currency === 'cash' ? bank : diamonds;
+    const max = Math.max(1, Math.floor(funds / price));
+    setBuyQuantities(prev => ({ ...prev, [id]: max }));
+  };
+
+  // תמיכה בכמות (qty) שמועברת לפונקציית הקנייה
+  const handlePurchase = async (item: Skin | World | PowerUp, type: 'skin' | 'world' | 'powerup', qty: number = 1) => {
     const isSkin = type === 'skin';
     const isWorld = type === 'world';
     const isPowerUp = type === 'powerup';
@@ -152,15 +173,16 @@ export default function ShopScreen() {
     let canAfford = false;
     let newBank = bank;
     let newDiamonds = diamonds;
+    const totalCost = item.price * qty;
 
-    if (item.currency === 'cash' && bank >= item.price) {
+    if (item.currency === 'cash' && bank >= totalCost) {
       canAfford = true;
-      newBank = bank - item.price;
+      newBank = bank - totalCost;
       setBank(newBank);
       SecureStore.setItemAsync('vault_bank', newBank.toString());
-    } else if (item.currency === 'diamond' && diamonds >= item.price) {
+    } else if (item.currency === 'diamond' && diamonds >= totalCost) {
       canAfford = true;
-      newDiamonds = diamonds - item.price;
+      newDiamonds = diamonds - totalCost;
       setDiamonds(newDiamonds);
       SecureStore.setItemAsync('vault_diamonds', newDiamonds.toString());
     }
@@ -179,7 +201,7 @@ export default function ShopScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setUnlockCelebration({ visible: true, name: item.name, type: 'world', id: item.id });
       } else if (isPowerUp) {
-        const newVal = await addPowerUp(item.id, 1);
+        const newVal = await addPowerUp(item.id, qty);
         setInventory(prev => ({ ...prev, [item.id]: newVal }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         
@@ -193,7 +215,7 @@ export default function ShopScreen() {
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const currentFunds = item.currency === 'cash' ? bank : diamonds;
-      const missing = item.price - currentFunds;
+      const missing = totalCost - currentFunds;
       setErrorModal({ visible: true, missingAmount: missing, currency: item.currency });
     }
   };
@@ -246,7 +268,7 @@ export default function ShopScreen() {
             
             return (
               <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <View style={[styles.colorPreviewContainer, { shadowColor: skin.color, shadowRadius: skin.glow / 2 }]}>
                     {skin.shape === 'gradient' && skin.primaryColor && skin.secondaryColor ? (
                       <Svg width="20" height="20">
@@ -262,8 +284,8 @@ export default function ShopScreen() {
                       <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: skin.color }} />
                     )}
                   </View>
-                  <View>
-                    <Text style={styles.itemName}>{skin.name}</Text>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={styles.itemName} numberOfLines={1} adjustsFontSizeToFit>{skin.name}</Text>
                     <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
                   </View>
                 </View>
@@ -278,7 +300,6 @@ export default function ShopScreen() {
 
           {activeTab === 'worlds' && (
             <>
-              {/* --- מפריד ויזואלי לעולמות של כסף --- */}
               <Text style={styles.categoryDivider}>--- FIAT CURRENCY WORLDS ---</Text>
               
               {WORLDS.filter(w => w.currency === 'cash').map((world) => {
@@ -287,16 +308,16 @@ export default function ShopScreen() {
                 
                 return (
                   <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                       <View style={[styles.colorPreviewContainer, { shadowColor: world.textPrimary }]}>
                         <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }} />
                       </View>
-                      <View style={{ paddingRight: 35 }}>
-                        <Text style={styles.itemName}>{world.name}</Text>
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={styles.itemName} numberOfLines={1} adjustsFontSizeToFit>{world.name}</Text>
                         <Text style={styles.itemSpecs}>{world.trait}</Text>
                       </View>
                     </View>
-                    <View style={{ position: 'absolute', right: 18 }}>
+                    <View style={{ alignItems: 'flex-end', minWidth: 60 }}>
                       {isEquipped ? <Text style={[styles.itemStatus, { color: world.textPrimary }]}>EQUIPPED</Text> : 
                        isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
                        <Text style={[styles.itemStatus, { color: '#00FF66' }]}>${world.price.toLocaleString()}</Text>}
@@ -305,7 +326,6 @@ export default function ShopScreen() {
                 );
               })}
 
-              {/* --- מפריד ויזואלי לעולמות של יהלומים --- */}
               <Text style={styles.categoryDivider}>--- PREMIUM DIAMOND WORLDS ---</Text>
               
               {WORLDS.filter(w => w.currency === 'diamond').map((world) => {
@@ -314,16 +334,16 @@ export default function ShopScreen() {
                 
                 return (
                   <TouchableOpacity key={world.id} style={[styles.shopItem, isEquipped && { borderColor: world.textPrimary, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(world, 'world')}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                       <View style={[styles.colorPreviewContainer, { shadowColor: world.textPrimary }]}>
                         <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: world.bg, borderColor: world.textPrimary, borderWidth: 1 }} />
                       </View>
-                      <View style={{ paddingRight: 35 }}>
-                        <Text style={styles.itemName}>{world.name}</Text>
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={styles.itemName} numberOfLines={1} adjustsFontSizeToFit>{world.name}</Text>
                         <Text style={styles.itemSpecs}>{world.trait}</Text>
                       </View>
                     </View>
-                    <View style={{ position: 'absolute', right: 18 }}>
+                    <View style={{ alignItems: 'flex-end', minWidth: 60 }}>
                       {isEquipped ? <Text style={[styles.itemStatus, { color: world.textPrimary }]}>EQUIPPED</Text> : 
                        isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
                        <Text style={[styles.itemStatus, { color: '#00FFFF' }]}>💎 {world.price.toLocaleString()}</Text>}
@@ -336,24 +356,43 @@ export default function ShopScreen() {
 
           {activeTab === 'powerups' && POWER_UPS.map((power) => {
             const currentStock = inventory[power.id] || 0;
+            const qty = getQty(power.id);
+            const totalCost = power.price * qty;
+
             return (
               <View key={power.id} style={[styles.shopItem, { flexDirection: 'column', alignItems: 'stretch' }]}>
                 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', width: '65%' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 10 }}>
                     <View style={[styles.colorPreviewContainer, { shadowColor: power.color }]}>
                       <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: power.color }} />
                     </View>
-                    <View style={{ paddingRight: 5 }}>
-                      <Text style={styles.itemName}>{power.name}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemName} numberOfLines={1} adjustsFontSizeToFit>{power.name}</Text>
                       <Text style={[styles.itemSpecs, { lineHeight: 14 }]}>{power.desc}</Text>
                       {currentStock > 0 && <Text style={{ color: '#00FF66', fontSize: 10, marginTop: 4, fontWeight: 'bold' }}>IN STOCK: {currentStock}</Text>}
                     </View>
                   </View>
-                  
-                  <TouchableOpacity onPress={() => handlePurchase(power, 'powerup')} style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 }}>
+                </View>
+
+                {/* --- אזור כמות קנייה חדש (+ / - / MAX) --- */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, backgroundColor: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <TouchableOpacity onPress={() => updateQty(power.id, -1, power.price, power.currency)} style={styles.qtyBtn}>
+                      <Text style={styles.qtyBtnText}>-</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.qtyValue}>{qty}</Text>
+                    <TouchableOpacity onPress={() => updateQty(power.id, 1, power.price, power.currency)} style={styles.qtyBtn}>
+                      <Text style={styles.qtyBtnText}>+</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setMaxQty(power.id, power.price, power.currency)} style={styles.maxBtn}>
+                      <Text style={styles.maxBtnText}>MAX</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity onPress={() => handlePurchase(power, 'powerup', qty)} style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 }}>
                     <Text style={[styles.itemStatus, { color: power.currency === 'diamond' ? '#00FFFF' : '#00FF66', fontSize: 14 }]}>
-                      {power.currency === 'diamond' ? `💎 ${power.price.toLocaleString()}` : `$${power.price.toLocaleString()}`}
+                      BUY {qty} ({power.currency === 'diamond' ? `💎 ${totalCost.toLocaleString()}` : `$${totalCost.toLocaleString()}`})
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -361,7 +400,7 @@ export default function ShopScreen() {
                 {adLoaded && (
                   <TouchableOpacity 
                     onPress={() => handleWatchAdForPowerUp(power.id)} 
-                    style={{ backgroundColor: '#FF007F', paddingVertical: 10, borderRadius: 12, alignItems: 'center', marginTop: 5 }}
+                    style={{ backgroundColor: '#FF007F', paddingVertical: 10, borderRadius: 12, alignItems: 'center', marginTop: 10 }}
                   >
                     <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12, letterSpacing: 1 }}>WATCH AD FOR +1</Text>
                   </TouchableOpacity>
@@ -472,6 +511,11 @@ const styles = StyleSheet.create({
   itemName: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
   itemSpecs: { color: '#666', fontSize: 11, marginTop: 3 },
   itemStatus: { fontWeight: '900', fontSize: 16 },
+  qtyBtn: { backgroundColor: '#333', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  qtyBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  qtyValue: { color: '#FFF', fontSize: 16, fontWeight: 'bold', minWidth: 20, textAlign: 'center' },
+  maxBtn: { backgroundColor: '#FFCC00', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  maxBtnText: { color: '#000', fontSize: 10, fontWeight: '900' },
   footer: { position: 'absolute', bottom: 30, width: '100%', alignItems: 'center', zIndex: 10 },
   closeShopButton: { backgroundColor: '#FFF', paddingVertical: 15, width: '90%', borderRadius: 30, alignItems: 'center', shadowColor: '#FFF', shadowOpacity: 0.2, shadowRadius: 10 },
   closeShopText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16, letterSpacing: 1 },

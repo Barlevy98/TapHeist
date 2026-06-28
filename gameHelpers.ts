@@ -39,7 +39,6 @@ export const STORAGE_KEYS = {
 } as const;
 
 export function formatNumber(num: number): string {
-  // בוטל פורמט הקיצור (2K). חוזרים לתצוגה מלאה ומדויקת!
   return num.toLocaleString();
 }
 
@@ -336,12 +335,15 @@ export function getHackerRank(heists: number, maxCombo: number): string {
 }
 
 export function getRewardTier(nextCombo: number, worldId: string) {
-  // צבעים מלוטשים, מדויקים ומרשימים!
-  const SILVER = '#E6E8FA'; // כסף מבריק ובהיר
-  const GOLD = '#FFD700';   // זהב קלאסי
-  const RED = '#FF2A2A';    // אדום עמוק ובוהק
+  const SILVER = '#E6E8FA'; 
+  const GOLD = '#FFD700';   
+  const RED = '#FF2A2A';    
+  const BLACK = '#0A0A0A'; // היהלום השחור הייחודי לעולם הסייברפאנק
 
-  if (worldId === 'diamond_world') {
+  if (worldId === 'cyber') {
+    // עולם סייברפאנק תמיד מביא יהלום שחור עם 5 יחידות (או צבעים מטורפים יותר בהמשך)
+    return { gain: 5, color: BLACK, isBlack: true };
+  } else if (worldId === 'diamond_world') {
     if (nextCombo >= 25) return { gain: 4, color: RED }; 
     if (nextCombo >= 15) return { gain: 3, color: GOLD }; 
     if (nextCombo >= 10) return { gain: 2, color: SILVER }; 

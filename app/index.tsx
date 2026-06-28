@@ -119,6 +119,10 @@ export default function GameScreen() {
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
   const [gamesSinceAd, setGamesSinceAd] = useState(0);
 
+  // למעקב אחרי העלאת הדרגה
+  const [startRank, setStartRank] = useState('SCRIPT KIDDIE');
+  const [rankUpModal, setRankUpModal] = useState<string | null>(null);
+
   const activeZoneSize = isFirewallActive 
     ? Math.max(15, ZONE_SIZE * 0.5) 
     : (focusTapsLeft > 0 ? ZONE_SIZE * 2 : ZONE_SIZE);
@@ -210,7 +214,6 @@ export default function GameScreen() {
       setHasRevivedThisRun(true);
       setPendingRevive(false);
       
-      // תמיד נאפס שקיפות לבלוק כדי שלא ייעלם אחרי ה-Revive!
       cancelAnimation(targetOpacity);
       targetOpacity.value = 1;
       
@@ -223,6 +226,9 @@ export default function GameScreen() {
     useCallback(() => {
       loadSavedData();
       loadHapticsEnabled();
+      // אילוץ טעינת פרסומות כשהמסך נטען מחדש (פותר את הבעיה אחרי Hard Reset!)
+      if (!rewardedAd.loaded) rewardedAd.load();
+      if (!interstitialAd.loaded) interstitialAd.load();
     }, [])
   );
 
@@ -419,6 +425,9 @@ export default function GameScreen() {
     setRunDiamondsEarned(0);
     setHasRevivedThisRun(false); 
     
+    // שומרים את הדרגה ההתחלתית כדי לדעת אם עלינו בהמשך
+    setStartRank(getHackerRank(totalHeists, lifetimeMaxCombo));
+
     setIsShieldActive(false);
     setFocusTapsLeft(0);
     setIsFrozen(false);
@@ -428,14 +437,12 @@ export default function GameScreen() {
     cancelAnimation(freezeScale); freezeScale.value = 1;
     cancelAnimation(focusScale); focusScale.value = 1;
     
-    // איפוס מוחלט של אטימות הבלוק נגד באג הבלוק הנעלם!
     cancelAnimation(targetOpacity);
     targetOpacity.value = 1;
 
     let currentFirewallCount = gamesSinceFirewall + 1;
     let triggerFirewall = false;
     
-    // הורדת תדירות ה-Firewall למספר הגיוני
     if (currentFirewallCount >= 10 && Math.random() < 0.15) {
       triggerFirewall = true;
       currentFirewallCount = 0;
@@ -477,7 +484,6 @@ export default function GameScreen() {
       return;
     }
     
-    // פרסומת כל 5 משחקים במקום 4
     if (gamesSinceAd >= 5 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
@@ -560,17 +566,21 @@ export default function GameScreen() {
     
     updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
+
+    // בדיקת העלאת דרגה!
+    const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
+    if (finalRank !== startRank) {
+      setRankUpModal(finalRank);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     
     if (score >= 50000) {
-      if (await StoreReview.hasAction()) {
-        StoreReview.requestReview();
-      }
+      if (await StoreReview.hasAction()) StoreReview.requestReview();
     }
     
     setGameState('CASHED_OUT');
     setMissionBadge(await countClaimableMissions());
 
-    // פרסומת כל 5 משחקים במקום 4
     if (gamesSinceAd >= 5 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
@@ -605,13 +615,19 @@ export default function GameScreen() {
     
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
+
+    // בדיקת העלאת דרגה גם בהפסד!
+    const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
+    if (finalRank !== startRank) {
+      setRankUpModal(finalRank);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     
     closeInventory();
     targetOpacity.value = 1; 
     setGameState('GAMEOVER');
     setMissionBadge(await countClaimableMissions());
 
-    // פרסומת כל 5 משחקים
     if (gamesSinceAd >= 5 && interstitialLoaded) {
       interstitialAd.show();
       setGamesSinceAd(0);
@@ -663,7 +679,6 @@ export default function GameScreen() {
         updateAndPersistDiamonds(3);
         setRunDiamondsEarned((d) => d + 3);
         
-        // תיקון Firewall: הוספנו כסף בנוסף ליהלומים הקבועים!
         const reward = Math.floor(BASE_REWARD * multiplier * prestigeMult);
         setScore((s) => s + reward);
         
@@ -770,7 +785,6 @@ export default function GameScreen() {
         />
 
         <Pressable style={styles.touchArea} onPressIn={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
-          {/* הילה אדומה נמחקה */}
           <VaultRing 
             CIRCLE_SIZE={CIRCLE_SIZE}
             STROKE_WIDTH={STROKE_WIDTH}
@@ -834,6 +848,9 @@ export default function GameScreen() {
           prestigeOffer={getPrestigeOffer(bank, prestigeMult)}
           handlePrestige={handlePrestige}
           isFirewallActive={isFirewallActive}
+          bank={bank}
+          rankUpModal={rankUpModal}
+          setRankUpModal={setRankUpModal}
         />
 
       </Animated.View>

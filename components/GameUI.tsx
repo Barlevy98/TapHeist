@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -33,9 +33,15 @@ export default function GameUI({
   prestigeMult,
   prestigeOffer,
   handlePrestige,
-  isFirewallActive
+  isFirewallActive,
+  bank,
+  rankUpModal,
+  setRankUpModal
 }: any) {
   const router = useRouter();
+
+  // סטייט עבור אזהרת האיפוס
+  const [showPrestigeConfirm, setShowPrestigeConfirm] = useState(false);
 
   const renderRunStats = () => (
     <Text style={styles.runStatsText}>
@@ -55,9 +61,9 @@ export default function GameUI({
             </Text>
             
             {prestigeOffer && (
-              <TouchableOpacity onPress={handlePrestige} style={styles.prestigeButton}>
+              <TouchableOpacity onPress={() => setShowPrestigeConfirm(true)} style={styles.prestigeButton}>
                 <Text style={styles.prestigeTitle}>💀 GHOST PROTOCOL 💀</Text>
-                <Text style={styles.prestigeDesc}>Burn ${formatNumber(prestigeOffer.cost)} for permanent x{prestigeOffer.mult} multiplier!</Text>
+                <Text style={styles.prestigeDesc}>Burn ALL YOUR CASH for permanent x{prestigeOffer.mult} multiplier!</Text>
               </TouchableOpacity>
             )}
 
@@ -119,7 +125,6 @@ export default function GameUI({
               </View>
             )}
             
-            {/* הכפתורים עכשיו מכווצים את הטקסט אוטומטית במקום לחתוך אותו! */}
             <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}>
               <Text style={styles.cashOutText} adjustsFontSizeToFit numberOfLines={1}>CASH OUT (${formatNumber(score)})</Text>
             </TouchableOpacity>
@@ -192,6 +197,39 @@ export default function GameUI({
           </View>
         </View>
       )}
+
+      {/* --- מודאל וידוא שריפת כסף ל-Prestige --- */}
+      {showPrestigeConfirm && prestigeOffer && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { borderColor: '#FF3B30', padding: 25 }]}>
+            <Text style={styles.modalTitle}>CRITICAL WARNING</Text>
+            <Text style={styles.modalText}>This will permanently BURN your entire bank balance (${formatNumber(bank)}).</Text>
+            <Text style={styles.modalSubText}>Proceed to unlock x{prestigeOffer.mult} multiplier?</Text>
+            <View style={{ width: '100%', gap: 15, marginTop: 20 }}>
+              <TouchableOpacity onPress={() => { setShowPrestigeConfirm(false); handlePrestige(); }} style={styles.dangerButton}>
+                <Text style={styles.dangerButtonText}>BURN IT ALL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowPrestigeConfirm(false)} style={styles.safeButton}>
+                <Text style={styles.safeButtonText}>CANCEL</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* --- מודאל חגיגת עליית דרגה! --- */}
+      {rankUpModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 25 }]}>
+            <Text style={[styles.modalTitle, { color: '#00FF66' }]}>RANK UP!</Text>
+            <Text style={styles.modalText}>Your new hacker title is:</Text>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 15, textAlign: 'center' }}>{rankUpModal}</Text>
+            <TouchableOpacity onPress={() => setRankUpModal(null)} style={[styles.dangerButton, { backgroundColor: '#00FF66' }]}>
+              <Text style={[styles.dangerButtonText, { color: '#000' }]}>AWESOME</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </>
   );
 }
@@ -250,4 +288,15 @@ const styles = StyleSheet.create({
   introButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16 },
   introSkip: { marginTop: 14 },
   introSkipText: { color: '#666', fontSize: 14, fontWeight: 'bold' },
+  
+  // הוספת סטיילים למודאלים
+  modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+  modalContent: { width: '80%', backgroundColor: '#111', borderWidth: 2, borderColor: '#FF3B30', padding: 25, borderRadius: 20, alignItems: 'center' },
+  modalTitle: { fontSize: 24, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10, textAlign: 'center' },
+  modalText: { color: '#FFF', fontSize: 16, textAlign: 'center', marginBottom: 5 },
+  modalSubText: { color: '#666', fontSize: 14, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
+  dangerButton: { backgroundColor: '#FF3B30', paddingVertical: 15, borderRadius: 30, width: '100%', alignItems: 'center' },
+  dangerButtonText: { color: '#FFF', fontWeight: '900', fontSize: 16 },
+  safeButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#666', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
+  safeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 });
