@@ -40,7 +40,6 @@ export default function GameUI({
 }: any) {
   const router = useRouter();
 
-  // סטייט עבור אזהרת האיפוס
   const [showPrestigeConfirm, setShowPrestigeConfirm] = useState(false);
 
   const renderRunStats = () => (
@@ -140,7 +139,11 @@ export default function GameUI({
             <Text style={[styles.gameOverText, { color: '#FFCC00' }]}>SYSTEM COMPROMISED</Text>
             <Text style={styles.scrappedText}>Inject backdoor to resume hack?</Text>
             <TouchableOpacity onPress={onRevive} style={[styles.retryButton, { backgroundColor: '#FFCC00', marginBottom: 12, paddingHorizontal: 30 }]}><Text style={[styles.retryButtonText, { color: '#000' }]}>WATCH AD TO REVIVE</Text></TouchableOpacity>
-            <TouchableOpacity onPress={processGameOver} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>GIVE UP (Take 25%)</Text></TouchableOpacity>
+            <TouchableOpacity onPress={processGameOver} style={styles.secondaryActionButton}>
+              <Text style={styles.secondaryActionText}>
+                {activeWorld.id === 'diamond_world' ? 'GIVE UP (Keep Gems)' : 'GIVE UP (Take 25%)'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -198,7 +201,6 @@ export default function GameUI({
         </View>
       )}
 
-      {/* --- מודאל וידוא שריפת כסף ל-Prestige --- */}
       {showPrestigeConfirm && prestigeOffer && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderColor: '#FF3B30', padding: 25 }]}>
@@ -217,15 +219,25 @@ export default function GameUI({
         </View>
       )}
 
-      {/* --- מודאל חגיגת עליית דרגה! --- */}
+      {/* --- מודאל עלית דרגה משודרג שמציג את הבונוס! --- */}
       {rankUpModal && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 25 }]}>
             <Text style={[styles.modalTitle, { color: '#00FF66' }]}>RANK UP!</Text>
             <Text style={styles.modalText}>Your new hacker title is:</Text>
-            <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 15, textAlign: 'center' }}>{rankUpModal}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 10, textAlign: 'center' }}>{rankUpModal.rank}</Text>
+            
+            {rankUpModal.reward && (
+              <View style={{ backgroundColor: 'rgba(0,255,102,0.1)', padding: 12, borderRadius: 10, marginBottom: 20, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#00FF66' }}>
+                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold', marginBottom: 5 }}>PROMOTION BONUS</Text>
+                <Text style={{ color: rankUpModal.reward.type === 'diamond' ? '#00FFFF' : '#00FF66', fontSize: 22, fontWeight: '900' }}>
+                  +{rankUpModal.reward.type === 'diamond' ? `💎 ${formatNumber(rankUpModal.reward.amount)}` : `$${formatNumber(rankUpModal.reward.amount)}`}
+                </Text>
+              </View>
+            )}
+
             <TouchableOpacity onPress={() => setRankUpModal(null)} style={[styles.dangerButton, { backgroundColor: '#00FF66' }]}>
-              <Text style={[styles.dangerButtonText, { color: '#000' }]}>AWESOME</Text>
+              <Text style={[styles.dangerButtonText, { color: '#000' }]}>CLAIM & CONTINUE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -289,7 +301,6 @@ const styles = StyleSheet.create({
   introSkip: { marginTop: 14 },
   introSkipText: { color: '#666', fontSize: 14, fontWeight: 'bold' },
   
-  // הוספת סטיילים למודאלים
   modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   modalContent: { width: '80%', backgroundColor: '#111', borderWidth: 2, borderColor: '#FF3B30', padding: 25, borderRadius: 20, alignItems: 'center' },
   modalTitle: { fontSize: 24, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10, textAlign: 'center' },

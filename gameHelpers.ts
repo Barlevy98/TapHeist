@@ -334,14 +334,32 @@ export function getHackerRank(heists: number, maxCombo: number): string {
   return 'SCRIPT KIDDIE';
 }
 
+// פונקציה חדשה: מחזירה פרס ספציפי לכל דרגה חדשה שמושגת
+export function getRankReward(rank: string): { type: 'cash' | 'diamond', amount: number } | null {
+  switch (rank) {
+    case 'PACKET SNIFFER': return { type: 'cash', amount: 5000 };
+    case 'MALWARE DEV': return { type: 'cash', amount: 15000 };
+    case 'WHITE HAT': return { type: 'diamond', amount: 25 };
+    case 'SYSTEM ADMIN': return { type: 'cash', amount: 50000 };
+    case 'BLACK HAT': return { type: 'diamond', amount: 75 };
+    case 'CYBER DEMON': return { type: 'cash', amount: 250000 };
+    case 'NETRUNNER': return { type: 'diamond', amount: 200 };
+    case 'MASTER PHANTOM': return { type: 'diamond', amount: 500 };
+    case 'GHOST IN THE MACHINE': return { type: 'diamond', amount: 1000 };
+    case 'THE ARCHITECT': return { type: 'diamond', amount: 2500 };
+    case 'CYBER GOD': return { type: 'diamond', amount: 5000 };
+    case 'APEX SINGULARITY': return { type: 'diamond', amount: 10000 };
+    default: return null;
+  }
+}
+
 export function getRewardTier(nextCombo: number, worldId: string) {
   const SILVER = '#E6E8FA'; 
   const GOLD = '#FFD700';   
   const RED = '#FF2A2A';    
-  const BLACK = '#0A0A0A'; // היהלום השחור הייחודי לעולם הסייברפאנק
+  const BLACK = '#0A0A0A'; 
 
   if (worldId === 'cyber') {
-    // עולם סייברפאנק תמיד מביא יהלום שחור עם 5 יחידות (או צבעים מטורפים יותר בהמשך)
     return { gain: 5, color: BLACK, isBlack: true };
   } else if (worldId === 'diamond_world') {
     if (nextCombo >= 25) return { gain: 4, color: RED }; 

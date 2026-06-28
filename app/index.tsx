@@ -38,6 +38,7 @@ import {
   incrementWeeklyHeists,
   getPrestigeOffer,
   getHackerRank,
+  getRankReward,
   formatNumber,
   getRewardTier
 } from '../gameHelpers';
@@ -119,9 +120,10 @@ export default function GameScreen() {
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
   const [gamesSinceAd, setGamesSinceAd] = useState(0);
 
-  // למעקב אחרי העלאת הדרגה
   const [startRank, setStartRank] = useState('SCRIPT KIDDIE');
-  const [rankUpModal, setRankUpModal] = useState<string | null>(null);
+  
+  // הפיכת משתנה המודאל ל-Object שיכול להכיל גם את הדרגה וגם את הפרס
+  const [rankUpModal, setRankUpModal] = useState<any>(null);
 
   const activeZoneSize = isFirewallActive 
     ? Math.max(15, ZONE_SIZE * 0.5) 
@@ -226,7 +228,6 @@ export default function GameScreen() {
     useCallback(() => {
       loadSavedData();
       loadHapticsEnabled();
-      // אילוץ טעינת פרסומות כשהמסך נטען מחדש (פותר את הבעיה אחרי Hard Reset!)
       if (!rewardedAd.loaded) rewardedAd.load();
       if (!interstitialAd.loaded) interstitialAd.load();
     }, [])
@@ -425,7 +426,6 @@ export default function GameScreen() {
     setRunDiamondsEarned(0);
     setHasRevivedThisRun(false); 
     
-    // שומרים את הדרגה ההתחלתית כדי לדעת אם עלינו בהמשך
     setStartRank(getHackerRank(totalHeists, lifetimeMaxCombo));
 
     setIsShieldActive(false);
@@ -567,10 +567,16 @@ export default function GameScreen() {
     updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
 
-    // בדיקת העלאת דרגה!
+    // בדיקת העלאת דרגה + הפקדת בונוס אוטומטית!
     const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
     if (finalRank !== startRank) {
-      setRankUpModal(finalRank);
+      const reward = getRankReward(finalRank);
+      if (reward) {
+        if (reward.type === 'cash') updateAndPersistBank(reward.amount);
+        if (reward.type === 'diamond') updateAndPersistDiamonds(reward.amount);
+      }
+      setRankUpModal({ rank: finalRank, reward });
+      setStartRank(finalRank);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     
@@ -616,10 +622,16 @@ export default function GameScreen() {
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
 
-    // בדיקת העלאת דרגה גם בהפסד!
+    // בדיקת העלאת דרגה גם במקרה של פסילה (הפקדת הבונוס)
     const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
     if (finalRank !== startRank) {
-      setRankUpModal(finalRank);
+      const reward = getRankReward(finalRank);
+      if (reward) {
+        if (reward.type === 'cash') updateAndPersistBank(reward.amount);
+        if (reward.type === 'diamond') updateAndPersistDiamonds(reward.amount);
+      }
+      setRankUpModal({ rank: finalRank, reward });
+      setStartRank(finalRank);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     
