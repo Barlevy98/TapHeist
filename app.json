@@ -26,7 +26,11 @@
         "backgroundColor": "#050505"
       },
       "package": "com.tapheist.app",
-      "versionCode": 3
+      "versionCode": 3,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "plugins": [
       "expo-router",

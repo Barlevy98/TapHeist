@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Linking, Switch } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Linking, Switch, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import * as StoreReview from 'expo-store-review';
@@ -8,7 +8,6 @@ import { STORAGE_KEYS, loadHapticsEnabled, setHapticsEnabledCache, hapticImpact 
 import * as Haptics from 'expo-haptics';
 
 const SUPPORT_EMAIL = 'fixra.partners@gmail.com';
-// --- ה-App ID הוכנס לכאן ---
 const IOS_APP_ID = '6771778269'; 
 
 export default function SettingsScreen() {
@@ -49,9 +48,12 @@ export default function SettingsScreen() {
     await hapticImpact(Haptics.ImpactFeedbackStyle.Light);
     if (await StoreReview.isAvailableAsync()) {
       await StoreReview.requestReview();
-    } else if (IOS_APP_ID) {
-      // הקישור יוביל ישירות לעמוד שלכם ויפתח את חלונית הדירוג
+    } else if (Platform.OS === 'ios' && IOS_APP_ID) {
+      // לאפל: פותח את עמוד האפליקציה ב-App Store
       Linking.openURL(`https://apps.apple.com/app/id${IOS_APP_ID}?action=write-review`);
+    } else if (Platform.OS === 'android') {
+      // לאנדרואיד: מזהה אוטומטית שזה אנדרואיד ופותח את גוגל פליי
+      Linking.openURL(`market://details?id=com.tapheist.app`);
     } else {
       Linking.openURL('https://apps.apple.com/');
     }
