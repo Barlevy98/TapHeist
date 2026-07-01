@@ -318,6 +318,14 @@ export function getPrestigeOffer(bank: number, currentMult: number) {
   return null;
 }
 
+// מערך מסודר של הדרגות כדי לחשב דילוגים
+export const RANKS_ORDER = [
+  'SCRIPT KIDDIE', 'PACKET SNIFFER', 'MALWARE DEV', 'WHITE HAT',
+  'SYSTEM ADMIN', 'BLACK HAT', 'CYBER DEMON', 'NETRUNNER',
+  'MASTER PHANTOM', 'GHOST IN THE MACHINE', 'THE ARCHITECT',
+  'CYBER GOD', 'APEX SINGULARITY'
+];
+
 export function getHackerRank(heists: number, maxCombo: number): string {
   if (heists >= 2500 || maxCombo >= 150) return 'APEX SINGULARITY';
   if (heists >= 1000 || maxCombo >= 120) return 'CYBER GOD';
@@ -334,7 +342,6 @@ export function getHackerRank(heists: number, maxCombo: number): string {
   return 'SCRIPT KIDDIE';
 }
 
-// פונקציה חדשה: מחזירה פרס ספציפי לכל דרגה חדשה שמושגת
 export function getRankReward(rank: string): { type: 'cash' | 'diamond', amount: number } | null {
   switch (rank) {
     case 'PACKET SNIFFER': return { type: 'cash', amount: 5000 };
@@ -353,6 +360,25 @@ export function getRankReward(rank: string): { type: 'cash' | 'diamond', amount:
   }
 }
 
+// חישוב בונוס מצטבר על כל הדרגות שעברת
+export function getCumulativeRankRewards(oldRank: string, newRank: string) {
+  const oldIndex = RANKS_ORDER.indexOf(oldRank);
+  const newIndex = RANKS_ORDER.indexOf(newRank);
+  let totalCash = 0;
+  let totalDiamonds = 0;
+  
+  if (oldIndex >= 0 && newIndex > oldIndex) {
+    for (let i = oldIndex + 1; i <= newIndex; i++) {
+      const reward = getRankReward(RANKS_ORDER[i]);
+      if (reward) {
+        if (reward.type === 'cash') totalCash += reward.amount;
+        if (reward.type === 'diamond') totalDiamonds += reward.amount;
+      }
+    }
+  }
+  return { cash: totalCash, diamonds: totalDiamonds };
+}
+
 export function getRewardTier(nextCombo: number, worldId: string) {
   const SILVER = '#E6E8FA'; 
   const GOLD = '#FFD700';   
@@ -362,17 +388,17 @@ export function getRewardTier(nextCombo: number, worldId: string) {
   if (worldId === 'cyber') {
     return { gain: 5, color: BLACK, isBlack: true };
   } else if (worldId === 'diamond_world') {
-    if (nextCombo >= 25) return { gain: 4, color: RED }; 
-    if (nextCombo >= 15) return { gain: 3, color: GOLD }; 
-    if (nextCombo >= 10) return { gain: 2, color: SILVER }; 
+    if (nextCombo >= 26) return { gain: 4, color: RED }; 
+    if (nextCombo >= 16) return { gain: 3, color: GOLD }; 
+    if (nextCombo >= 11) return { gain: 2, color: SILVER }; 
     return { gain: 1, color: '#00FFFF' }; 
   } else if (worldId === 'nebula') {
-    if (nextCombo >= 125) return { gain: 4, color: RED };
+    if (nextCombo >= 126) return { gain: 4, color: RED };
     return { gain: 3, color: GOLD };
   } else {
-    if (nextCombo >= 125) return { gain: 4, color: RED }; 
-    if (nextCombo >= 100) return { gain: 3, color: GOLD }; 
-    if (nextCombo >= 50)  return { gain: 2, color: SILVER }; 
+    if (nextCombo >= 126) return { gain: 4, color: RED }; 
+    if (nextCombo >= 101) return { gain: 3, color: GOLD }; 
+    if (nextCombo >= 51)  return { gain: 2, color: SILVER }; 
     return { gain: 1, color: '#00FFFF' }; 
   }
 }

@@ -23,8 +23,8 @@ export default function VaultRing({
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
   
-  // הבלוק יהיה לבן כדי לבלוט אם היהלום הוא שחור
-  const blockColor = isBlack ? '#FFFFFF' : (isDiamondTarget ? displayColor : '#00FF66');
+  // הבלוק יהיה ירוק רגיל, או שחור כשהמטרה היא יהלום שחור בעולם הסייברפאנק!
+  const blockColor = isDiamondTarget ? displayColor : '#00FF66';
 
   return (
     <View style={[styles.vaultContainer, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>

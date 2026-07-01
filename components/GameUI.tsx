@@ -219,7 +219,7 @@ export default function GameUI({
         </View>
       )}
 
-      {/* --- מודאל עלית דרגה משודרג שמציג את הבונוס! --- */}
+      {/* --- מודאל עלית דרגה משודרג שמציג את הבונוס המצטבר! --- */}
       {rankUpModal && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 25 }]}>
@@ -227,12 +227,19 @@ export default function GameUI({
             <Text style={styles.modalText}>Your new hacker title is:</Text>
             <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 10, textAlign: 'center' }}>{rankUpModal.rank}</Text>
             
-            {rankUpModal.reward && (
+            {(rankUpModal.cashReward > 0 || rankUpModal.diamondReward > 0) && (
               <View style={{ backgroundColor: 'rgba(0,255,102,0.1)', padding: 12, borderRadius: 10, marginBottom: 20, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#00FF66' }}>
                 <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold', marginBottom: 5 }}>PROMOTION BONUS</Text>
-                <Text style={{ color: rankUpModal.reward.type === 'diamond' ? '#00FFFF' : '#00FF66', fontSize: 22, fontWeight: '900' }}>
-                  +{rankUpModal.reward.type === 'diamond' ? `💎 ${formatNumber(rankUpModal.reward.amount)}` : `$${formatNumber(rankUpModal.reward.amount)}`}
-                </Text>
+                {rankUpModal.cashReward > 0 && (
+                  <Text style={{ color: '#00FF66', fontSize: 20, fontWeight: '900' }}>
+                    +${formatNumber(rankUpModal.cashReward)}
+                  </Text>
+                )}
+                {rankUpModal.diamondReward > 0 && (
+                  <Text style={{ color: '#00FFFF', fontSize: 20, fontWeight: '900' }}>
+                    +💎 {formatNumber(rankUpModal.diamondReward)}
+                  </Text>
+                )}
               </View>
             )}
 

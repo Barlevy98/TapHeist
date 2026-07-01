@@ -4,7 +4,6 @@ import Animated from 'react-native-reanimated';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { formatNumber } from '../gameHelpers'; 
 
-// הוספנו תמיכה ב-isBlack כדי לייצר ליהלום קו מתאר לבן כשהוא שחור
 const DiamondSvg = ({ color, size = 18, isBlack = false }: { color: string, size?: number, isBlack?: boolean }) => (
   <Svg viewBox="0 0 24 24" width={size} height={size}>
     <Path d="M 5 5 L 19 5 L 24 11 L 12 23 L 0 11 Z" fill={color} stroke={isBlack ? "#FFFFFF" : "none"} strokeWidth={isBlack ? 1.5 : 0} />
@@ -57,10 +56,11 @@ export default function GameHeader({
               {activeWorld.id === 'diamond_world' ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
                   <DiamondSvg color={activeWorld.textPrimary} size={28} />
-                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]} adjustsFontSizeToFit numberOfLines={1}> {formatNumber(runDiamondsEarned)}</Text>
+                  {/* נמחקה ההצללה מהטקסט כדי למנוע את הריבוע הלבן */}
+                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]} adjustsFontSizeToFit numberOfLines={1}> {formatNumber(runDiamondsEarned)}</Text>
                 </View>
               ) : (
-                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]} adjustsFontSizeToFit numberOfLines={1}>${formatNumber(score)}</Text>
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]} adjustsFontSizeToFit numberOfLines={1}>${formatNumber(score)}</Text>
               )}
               
               <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
@@ -129,9 +129,11 @@ const styles = StyleSheet.create({
   bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900', width: '100%' },
   diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', width: '100%' },
   scoreContainer: { alignItems: 'flex-end', flex: 1, paddingLeft: 10 },
-  scoreText: { fontSize: 40, fontWeight: '900', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15, width: '100%', textAlign: 'right' },
+  // נמחקה ההצללה המובנית מהסטייל
+  scoreText: { fontSize: 40, fontWeight: '900', width: '100%', textAlign: 'right' },
   floatingScoreContainer: { position: 'absolute', right: 0, top: -30, flexDirection: 'row', alignItems: 'center' },
-  floatingScoreText: { fontSize: 24, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 5 },
+  // נמחקה ההצללה המובנית מהסטייל
+  floatingScoreText: { fontSize: 24, fontWeight: '900' },
   multiplierText: { color: '#FFCC00', fontSize: 14, fontWeight: 'bold', letterSpacing: 1, marginTop: -5 },
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },

@@ -39,8 +39,10 @@ export default function ShopScreen() {
     smart_shield: 0, time_freeze: 0, precision_focus: 0
   });
 
-  // מנגנון חדש - כמות לבחירה לכל PowerUp
   const [buyQuantities, setBuyQuantities] = useState<Record<string, number>>({});
+  
+  // מזהה הפאוור אפ שמהבהב באדום (כשמנסים לקנות מעבר לתקציב)
+  const [flashRedId, setFlashRedId] = useState<string | null>(null);
 
   const [errorModal, setErrorModal] = useState({ visible: false, missingAmount: 0, currency: '' });
   const [unlockCelebration, setUnlockCelebration] = useState<{ visible: boolean; name: string; type: string; id: string }>({
@@ -136,12 +138,29 @@ export default function ShopScreen() {
 
   const getQty = (id: string) => buyQuantities[id] || 1;
   
+  const triggerFlash = (id: string) => {
+    setFlashRedId(id);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    setTimeout(() => setFlashRedId(null), 400);
+  };
+
   const updateQty = (id: string, delta: number, price: number, currency: string) => {
     let q = getQty(id) + delta;
     if (q < 1) q = 1;
     const funds = currency === 'cash' ? bank : diamonds;
     const max = Math.floor(funds / price);
-    if (q > max && max > 0) q = max; 
+    
+    // אם אין לו מספיק אפילו לאחד, והוא מנסה לעלות
+    if (max === 0) {
+      if (delta > 0) triggerFlash(id);
+      setBuyQuantities(prev => ({ ...prev, [id]: 1 }));
+      return;
+    }
+
+    if (q > max) {
+      triggerFlash(id);
+      q = max;
+    }
     setBuyQuantities(prev => ({ ...prev, [id]: q }));
   };
 
@@ -151,7 +170,6 @@ export default function ShopScreen() {
     setBuyQuantities(prev => ({ ...prev, [id]: max }));
   };
 
-  // תמיכה בכמות (qty) שמועברת לפונקציית הקנייה
   const handlePurchase = async (item: Skin | World | PowerUp, type: 'skin' | 'world' | 'powerup', qty: number = 1) => {
     const isSkin = type === 'skin';
     const isWorld = type === 'world';
@@ -375,13 +393,13 @@ export default function ShopScreen() {
                   </View>
                 </View>
 
-                {/* --- אזור כמות קנייה חדש (+ / - / MAX) --- */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, backgroundColor: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 10 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <TouchableOpacity onPress={() => updateQty(power.id, -1, power.price, power.currency)} style={styles.qtyBtn}>
                       <Text style={styles.qtyBtnText}>-</Text>
                     </TouchableOpacity>
-                    <Text style={styles.qtyValue}>{qty}</Text>
+                    {/* כאן הוספנו את ההבהוב האדום אם ניסינו לחרוג מהתקציב */}
+                    <Text style={[styles.qtyValue, flashRedId === power.id && { color: '#FF3B30' }]}>{qty}</Text>
                     <TouchableOpacity onPress={() => updateQty(power.id, 1, power.price, power.currency)} style={styles.qtyBtn}>
                       <Text style={styles.qtyBtnText}>+</Text>
                     </TouchableOpacity>

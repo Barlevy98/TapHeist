@@ -38,7 +38,7 @@ import {
   incrementWeeklyHeists,
   getPrestigeOffer,
   getHackerRank,
-  getRankReward,
+  getCumulativeRankRewards, // הפונקציה המצטברת החדשה!
   formatNumber,
   getRewardTier
 } from '../gameHelpers';
@@ -121,8 +121,6 @@ export default function GameScreen() {
   const [gamesSinceAd, setGamesSinceAd] = useState(0);
 
   const [startRank, setStartRank] = useState('SCRIPT KIDDIE');
-  
-  // הפיכת משתנה המודאל ל-Object שיכול להכיל גם את הדרגה וגם את הפרס
   const [rankUpModal, setRankUpModal] = useState<any>(null);
 
   const activeZoneSize = isFirewallActive 
@@ -567,15 +565,18 @@ export default function GameScreen() {
     updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
 
-    // בדיקת העלאת דרגה + הפקדת בונוס אוטומטית!
+    // בדיקת העלאת דרגה + הפקדת בונוס מצטבר
     const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
     if (finalRank !== startRank) {
-      const reward = getRankReward(finalRank);
-      if (reward) {
-        if (reward.type === 'cash') updateAndPersistBank(reward.amount);
-        if (reward.type === 'diamond') updateAndPersistDiamonds(reward.amount);
-      }
-      setRankUpModal({ rank: finalRank, reward });
+      const cumulative = getCumulativeRankRewards(startRank, finalRank);
+      if (cumulative.cash > 0) updateAndPersistBank(cumulative.cash);
+      if (cumulative.diamonds > 0) updateAndPersistDiamonds(cumulative.diamonds);
+      
+      setRankUpModal({ 
+        rank: finalRank, 
+        cashReward: cumulative.cash, 
+        diamondReward: cumulative.diamonds 
+      });
       setStartRank(finalRank);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -622,15 +623,18 @@ export default function GameScreen() {
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
 
-    // בדיקת העלאת דרגה גם במקרה של פסילה (הפקדת הבונוס)
+    // בדיקת העלאת דרגה + הפקדת בונוס מצטבר (גם בהפסד)
     const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
     if (finalRank !== startRank) {
-      const reward = getRankReward(finalRank);
-      if (reward) {
-        if (reward.type === 'cash') updateAndPersistBank(reward.amount);
-        if (reward.type === 'diamond') updateAndPersistDiamonds(reward.amount);
-      }
-      setRankUpModal({ rank: finalRank, reward });
+      const cumulative = getCumulativeRankRewards(startRank, finalRank);
+      if (cumulative.cash > 0) updateAndPersistBank(cumulative.cash);
+      if (cumulative.diamonds > 0) updateAndPersistDiamonds(cumulative.diamonds);
+      
+      setRankUpModal({ 
+        rank: finalRank, 
+        cashReward: cumulative.cash, 
+        diamondReward: cumulative.diamonds 
+      });
       setStartRank(finalRank);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
