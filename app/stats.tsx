@@ -33,12 +33,13 @@ export default function StatsScreen() {
     ]);
 
     setStats({
-      maxCombo: maxCombo ? parseInt(maxCombo, 10) : 0,
-      maxMultiplier: maxMult ? parseInt(maxMult, 10) : 1,
-      bestRunCash: bestCash ? parseInt(bestCash, 10) : 0,
-      bestRunDiamonds: bestDiamonds ? parseInt(bestDiamonds, 10) : 0,
-      totalHeists: totalHeists ? parseInt(totalHeists, 10) : 0,
-      streak: streak ? parseInt(streak, 10) : 0,
+      // הוחלף ל-Number
+      maxCombo: maxCombo ? Number(maxCombo) : 0,
+      maxMultiplier: maxMult ? Number(maxMult) : 1,
+      bestRunCash: bestCash ? Number(bestCash) : 0,
+      bestRunDiamonds: bestDiamonds ? Number(bestDiamonds) : 0,
+      totalHeists: totalHeists ? Number(totalHeists) : 0,
+      streak: streak ? Number(streak) : 0,
     });
   };
 

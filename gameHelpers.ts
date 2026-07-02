@@ -47,16 +47,17 @@ export async function getPowerUpInventory(): Promise<Record<string, number>> {
   const freeze = await SecureStore.getItemAsync(STORAGE_KEYS.inv_time_freeze);
   const focus = await SecureStore.getItemAsync(STORAGE_KEYS.inv_precision_focus);
   return {
-    smart_shield: shield ? parseInt(shield, 10) : 0,
-    time_freeze: freeze ? parseInt(freeze, 10) : 0,
-    precision_focus: focus ? parseInt(focus, 10) : 0,
+    // הוחלף ל-Number
+    smart_shield: shield ? Number(shield) : 0,
+    time_freeze: freeze ? Number(freeze) : 0,
+    precision_focus: focus ? Number(focus) : 0,
   };
 }
 
 export async function addPowerUp(id: string, amount: number = 1): Promise<number> {
   const key = `inv_${id}` as keyof typeof STORAGE_KEYS;
   const currentStr = await SecureStore.getItemAsync(STORAGE_KEYS[key]);
-  const current = currentStr ? parseInt(currentStr, 10) : 0;
+  const current = currentStr ? Number(currentStr) : 0;
   const newVal = current + amount;
   await SecureStore.setItemAsync(STORAGE_KEYS[key], newVal.toString());
   return newVal;
@@ -73,7 +74,7 @@ export function getNextSundayMidnight(): number {
 export async function loadWeeklyMissionsData() {
   const now = Date.now();
   const expiryStr = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyExpiry);
-  let expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
+  let expiry = expiryStr ? Number(expiryStr) : 0;
 
   if (now > expiry || !expiryStr) {
     expiry = getNextSundayMidnight();
@@ -106,16 +107,16 @@ export async function loadWeeklyMissionsData() {
   return {
     missions: activeMissions,
     claimed,
-    weeklyHeists: weeklyHeists ? parseInt(weeklyHeists, 10) : 0,
-    weeklyMaxCombo: wCombo ? parseInt(wCombo, 10) : 0,
-    weeklyMaxMultiplier: wMult ? parseInt(wMult, 10) : 1,
+    weeklyHeists: weeklyHeists ? Number(weeklyHeists) : 0,
+    weeklyMaxCombo: wCombo ? Number(wCombo) : 0,
+    weeklyMaxMultiplier: wMult ? Number(wMult) : 1,
     countdown: `${days}d ${hours}h left`,
   };
 }
 
 export async function incrementWeeklyHeists() {
   const current = await SecureStore.getItemAsync(STORAGE_KEYS.weeklyHeistsCount);
-  const next = (current ? parseInt(current, 10) : 0) + 1;
+  const next = (current ? Number(current) : 0) + 1;
   await SecureStore.setItemAsync(STORAGE_KEYS.weeklyHeistsCount, next.toString());
 }
 
@@ -164,7 +165,7 @@ export type DailyRewardInfo = {
 export async function getDailyRewardInfo(): Promise<DailyRewardInfo> {
   const last = await SecureStore.getItemAsync(STORAGE_KEYS.lastDailyClaim);
   const streakRaw = await SecureStore.getItemAsync(STORAGE_KEYS.dailyStreak);
-  let streak = streakRaw ? parseInt(streakRaw, 10) : 0;
+  let streak = streakRaw ? Number(streakRaw) : 0;
   const today = todayKey();
 
   if (last === today) {
@@ -188,8 +189,8 @@ export async function claimDailyReward(): Promise<DailyRewardInfo> {
 
   const bankRaw = await SecureStore.getItemAsync(STORAGE_KEYS.bank);
   const diamondsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.diamonds);
-  const bank = bankRaw ? parseInt(bankRaw, 10) : 0;
-  const diamonds = diamondsRaw ? parseInt(diamondsRaw, 10) : 0;
+  const bank = bankRaw ? Number(bankRaw) : 0;
+  const diamonds = diamondsRaw ? Number(diamondsRaw) : 0;
 
   const newBank = bank + info.cashReward;
   const newDiamonds = diamonds + info.diamondReward;
@@ -204,14 +205,14 @@ export async function claimDailyReward(): Promise<DailyRewardInfo> {
 
 export async function updateMaxBank(value: number) {
   const saved = await SecureStore.getItemAsync(STORAGE_KEYS.maxBank);
-  if (!saved || value > parseInt(saved, 10)) {
+  if (!saved || value > Number(saved)) {
     await SecureStore.setItemAsync(STORAGE_KEYS.maxBank, value.toString());
   }
 }
 
 export async function incrementTotalHeists() {
   const saved = await SecureStore.getItemAsync(STORAGE_KEYS.totalHeists);
-  const next = (saved ? parseInt(saved, 10) : 0) + 1;
+  const next = (saved ? Number(saved) : 0) + 1;
   await SecureStore.setItemAsync(STORAGE_KEYS.totalHeists, next.toString());
   return next;
 }
@@ -226,9 +227,9 @@ export async function countClaimableMissions(): Promise<number> {
   ]);
 
   const stats = {
-    combo: maxCombo ? parseInt(maxCombo, 10) : 0,
-    multiplier: maxMult ? parseInt(maxMult, 10) : 1,
-    bank: maxBank ? parseInt(maxBank, 10) : 0,
+    combo: maxCombo ? Number(maxCombo) : 0,
+    multiplier: maxMult ? Number(maxMult) : 1,
+    bank: maxBank ? Number(maxBank) : 0,
   };
   const claimed: string[] = claimedRaw ? JSON.parse(claimedRaw) : [];
 
@@ -318,7 +319,6 @@ export function getPrestigeOffer(bank: number, currentMult: number) {
   return null;
 }
 
-// מערך מסודר של הדרגות כדי לחשב דילוגים
 export const RANKS_ORDER = [
   'SCRIPT KIDDIE', 'PACKET SNIFFER', 'MALWARE DEV', 'WHITE HAT',
   'SYSTEM ADMIN', 'BLACK HAT', 'CYBER DEMON', 'NETRUNNER',
@@ -360,7 +360,6 @@ export function getRankReward(rank: string): { type: 'cash' | 'diamond', amount:
   }
 }
 
-// חישוב בונוס מצטבר על כל הדרגות שעברת
 export function getCumulativeRankRewards(oldRank: string, newRank: string) {
   const oldIndex = RANKS_ORDER.indexOf(oldRank);
   const newIndex = RANKS_ORDER.indexOf(newRank);

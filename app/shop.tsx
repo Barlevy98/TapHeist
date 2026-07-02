@@ -41,7 +41,6 @@ export default function ShopScreen() {
 
   const [buyQuantities, setBuyQuantities] = useState<Record<string, number>>({});
   
-  // מזהה הפאוור אפ שמהבהב באדום (כשמנסים לקנות מעבר לתקציב)
   const [flashRedId, setFlashRedId] = useState<string | null>(null);
 
   const [errorModal, setErrorModal] = useState({ visible: false, missingAmount: 0, currency: '' });
@@ -116,8 +115,9 @@ export default function ShopScreen() {
       const savedUnlockedWorlds = await SecureStore.getItemAsync('vault_unlocked_worlds');
       const savedEquippedWorld = await SecureStore.getItemAsync('vault_equipped_world');
 
-      if (savedBank !== null) setBank(parseInt(savedBank));
-      if (savedDiamonds !== null) setDiamonds(parseInt(savedDiamonds));
+      // הוחלף ל-Number
+      if (savedBank !== null) setBank(Number(savedBank));
+      if (savedDiamonds !== null) setDiamonds(Number(savedDiamonds));
       if (savedUnlockedSkins !== null) setUnlockedSkins(JSON.parse(savedUnlockedSkins));
       if (savedEquippedSkin !== null) setEquippedSkin(savedEquippedSkin);
       if (savedUnlockedWorlds !== null) setUnlockedWorlds(JSON.parse(savedUnlockedWorlds));
@@ -150,7 +150,6 @@ export default function ShopScreen() {
     const funds = currency === 'cash' ? bank : diamonds;
     const max = Math.floor(funds / price);
     
-    // אם אין לו מספיק אפילו לאחד, והוא מנסה לעלות
     if (max === 0) {
       if (delta > 0) triggerFlash(id);
       setBuyQuantities(prev => ({ ...prev, [id]: 1 }));
@@ -398,7 +397,6 @@ export default function ShopScreen() {
                     <TouchableOpacity onPress={() => updateQty(power.id, -1, power.price, power.currency)} style={styles.qtyBtn}>
                       <Text style={styles.qtyBtnText}>-</Text>
                     </TouchableOpacity>
-                    {/* כאן הוספנו את ההבהוב האדום אם ניסינו לחרוג מהתקציב */}
                     <Text style={[styles.qtyValue, flashRedId === power.id && { color: '#FF3B30' }]}>{qty}</Text>
                     <TouchableOpacity onPress={() => updateQty(power.id, 1, power.price, power.currency)} style={styles.qtyBtn}>
                       <Text style={styles.qtyBtnText}>+</Text>

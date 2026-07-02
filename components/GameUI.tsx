@@ -36,7 +36,8 @@ export default function GameUI({
   isFirewallActive,
   bank,
   rankUpModal,
-  setRankUpModal
+  setRankUpModal,
+  startFirewallFromModal // נוסף לכאן
 }: any) {
   const router = useRouter();
 
@@ -94,14 +95,6 @@ export default function GameUI({
                 <Text style={styles.menuButtonText}>SETTINGS</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        {gameState === 'FIREWALL_TUTORIAL' && (
-          <View style={styles.tutorialContainer}>
-            <Text style={[styles.tutorialTitle, { color: '#FFCC00' }]}>🔥 FIREWALL ENCOUNTERED 🔥</Text>
-            <Text style={styles.tutorialText}>The system has detected your intrusion! The zone is shrinking and rotating faster. Every hit guarantees 3 Diamonds AND massive Cash.</Text>
-            <Text style={[styles.tutorialTap, { color: '#FF3B30' }]}>TAP TO START BREACH</Text>
           </View>
         )}
 
@@ -219,7 +212,24 @@ export default function GameUI({
         </View>
       )}
 
-      {/* --- מודאל עלית דרגה משודרג שמציג את הבונוס המצטבר! --- */}
+      {/* --- מסך הבחירה החדש והיוקרתי של ה-Firewall --- */}
+      {gameState === 'FIREWALL_MODAL' && (
+        <View style={styles.introOverlay}>
+          <View style={[styles.introCard, { borderColor: '#FFCC00' }]}>
+            <Text style={[styles.introTitle, { color: '#FFCC00' }]}>🔥 FIREWALL BREACH 🔥</Text>
+            <Text style={styles.introText}>You hit the golden vault! The zone is shrinking and rotating extremely fast. Choose your payload before you begin:</Text>
+            <View style={{ width: '100%', gap: 12, marginTop: 10 }}>
+              <TouchableOpacity onPress={() => startFirewallFromModal('diamond')} style={[styles.introButton, { backgroundColor: '#00FFFF' }]}>
+                <Text style={[styles.introButtonText, { color: '#000' }]}>💎 EXTRACT GEMS (3/HIT)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => startFirewallFromModal('cash')} style={[styles.introButton, { backgroundColor: '#00FF66' }]}>
+                <Text style={[styles.introButtonText, { color: '#000' }]}>💵 CASH (x4 MULTIPLIER)</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {rankUpModal && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 25 }]}>

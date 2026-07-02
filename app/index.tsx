@@ -38,7 +38,7 @@ import {
   incrementWeeklyHeists,
   getPrestigeOffer,
   getHackerRank,
-  getCumulativeRankRewards, // הפונקציה המצטברת החדשה!
+  getCumulativeRankRewards,
   formatNumber,
   getRewardTier
 } from '../gameHelpers';
@@ -116,6 +116,9 @@ export default function GameScreen() {
   const [prestigeMult, setPrestigeMult] = useState(1);
   const [gamesSinceFirewall, setGamesSinceFirewall] = useState(0);
   const [isFirewallActive, setIsFirewallActive] = useState(false);
+  
+  // הוספת סטייט חדש לבחירת המטרה ב-Firewall
+  const [firewallMode, setFirewallMode] = useState<'diamond' | 'cash' | null>(null);
 
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
   const [gamesSinceAd, setGamesSinceAd] = useState(0);
@@ -247,8 +250,9 @@ export default function GameScreen() {
       const savedPrestigeMult = await SecureStore.getItemAsync(STORAGE_KEYS.prestigeMultiplier);
       const savedFirewallGames = await SecureStore.getItemAsync(STORAGE_KEYS.gamesSinceFirewall);
 
-      const currentBank = savedBank ? parseInt(savedBank, 10) : 0;
-      const currentDiamonds = savedDiamonds ? parseInt(savedDiamonds, 10) : 0;
+      // תיקון השימוש ב-Number במקום parseInt כדי לא לחתוך כתיב מדעי
+      const currentBank = savedBank ? Number(savedBank) : 0;
+      const currentDiamonds = savedDiamonds ? Number(savedDiamonds) : 0;
       const uSkins = unlockedSkinsRaw ? JSON.parse(unlockedSkinsRaw) : ['white'];
       const uWorlds = unlockedWorldsRaw ? JSON.parse(unlockedWorldsRaw) : ['darknet'];
 
@@ -266,10 +270,10 @@ export default function GameScreen() {
         if (foundWorld) setActiveWorld(foundWorld);
       }
 
-      if (savedMaxCombo) setLifetimeMaxCombo(parseInt(savedMaxCombo, 10));
-      if (savedTotalHeists) setTotalHeists(parseInt(savedTotalHeists, 10));
-      if (savedPrestigeMult) setPrestigeMult(parseInt(savedPrestigeMult, 10));
-      if (savedFirewallGames) setGamesSinceFirewall(parseInt(savedFirewallGames, 10));
+      if (savedMaxCombo) setLifetimeMaxCombo(Number(savedMaxCombo));
+      if (savedTotalHeists) setTotalHeists(Number(savedTotalHeists));
+      if (savedPrestigeMult) setPrestigeMult(Number(savedPrestigeMult));
+      if (savedFirewallGames) setGamesSinceFirewall(Number(savedFirewallGames));
 
       setMainNextUnlock(getNextUnlock(currentBank, currentDiamonds, uSkins, uWorlds));
       setInventory(await getPowerUpInventory());
@@ -302,7 +306,7 @@ export default function GameScreen() {
 
   const updateStatsRecord = async (key: string, currentValue: number) => {
     const saved = await SecureStore.getItemAsync(key);
-    if (!saved || currentValue > parseInt(saved, 10)) {
+    if (!saved || currentValue > Number(saved)) {
       await SecureStore.setItemAsync(key, currentValue.toString());
     }
   };
@@ -423,6 +427,7 @@ export default function GameScreen() {
     setRunMaxCombo(0);
     setRunDiamondsEarned(0);
     setHasRevivedThisRun(false); 
+    setFirewallMode(null); // איפוס הבחירה הקודמת
     
     setStartRank(getHackerRank(totalHeists, lifetimeMaxCombo));
 
@@ -453,12 +458,9 @@ export default function GameScreen() {
     closeInventory();
     
     if (triggerFirewall) {
-      const seenFW = await SecureStore.getItemAsync(STORAGE_KEYS.firewallTutorial);
-      if (seenFW !== 'true') {
-        setGameState('FIREWALL_TUTORIAL');
-        await SecureStore.setItemAsync(STORAGE_KEYS.firewallTutorial, 'true');
-        return; 
-      }
+      // מעכשיו תמיד מציגים את המודאל של בחירת ה-Firewall
+      setGameState('FIREWALL_MODAL');
+      return; 
     }
 
     setGameState('PLAYING');
@@ -468,13 +470,15 @@ export default function GameScreen() {
     }, 0);
   };
 
-  const startFirewallFromTutorial = () => {
+  const startFirewallFromModal = (mode: 'diamond' | 'cash') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setFirewallMode(mode);
     setGameState('PLAYING');
     setTimeout(() => {
       randomizeTarget();
       startRotation(getSpeedDuration(0), 1);
     }, 0);
-  }
+  };
 
   const requestStartGame = async () => {
     if (introStep !== null && introStep < 3) {
@@ -565,7 +569,6 @@ export default function GameScreen() {
     updateStatsRecord(STORAGE_KEYS.bestRunCash, score);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
 
-    // בדיקת העלאת דרגה + הפקדת בונוס מצטבר
     const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
     if (finalRank !== startRank) {
       const cumulative = getCumulativeRankRewards(startRank, finalRank);
@@ -623,7 +626,6 @@ export default function GameScreen() {
     updateStatsRecord(STORAGE_KEYS.bestRunCash, calculatedPrize);
     updateStatsRecord(STORAGE_KEYS.bestRunDiamonds, runDiamondsEarned);
 
-    // בדיקת העלאת דרגה + הפקדת בונוס מצטבר (גם בהפסד)
     const finalRank = getHackerRank(newHeists, lifetimeMaxCombo);
     if (finalRank !== startRank) {
       const cumulative = getCumulativeRankRewards(startRank, finalRank);
@@ -653,7 +655,7 @@ export default function GameScreen() {
   const handleTap = async () => {
     if (gameState === 'START' || gameState === 'CASHED_OUT') { await requestStartGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
-    if (gameState === 'FIREWALL_TUTORIAL') { startFirewallFromTutorial(); return; }
+    if (gameState === 'FIREWALL_MODAL') return; 
     if (gameState !== 'PLAYING') return;
     if (isInventoryOpen) { closeInventory(); return; }
 
@@ -690,15 +692,23 @@ export default function GameScreen() {
       const tier = getRewardTier(newCombo, activeWorld.id);
       const diamondGain = tier.gain;
 
+      // טיפול משודרג בבונוס ה-Firewall (בהתאם לבחירה במודאל)
       if (isFirewallActive) {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
-        updateAndPersistDiamonds(3);
-        setRunDiamondsEarned((d) => d + 3);
         
-        const reward = Math.floor(BASE_REWARD * multiplier * prestigeMult);
-        setScore((s) => s + reward);
-        
-        playScoreAnimation(reward);
+        if (firewallMode === 'cash') {
+          // בחרנו כסף - מקבל כפול 4 מהמכפיל!
+          const reward = Math.floor(BASE_REWARD * (multiplier * 4) * prestigeMult);
+          setScore((s) => s + reward);
+          playScoreAnimation(reward);
+        } else {
+          // בחרנו יהלומים - מקבל 3 מובטחים + הניקוד הרגיל
+          updateAndPersistDiamonds(3);
+          setRunDiamondsEarned((d) => d + 3);
+          const reward = Math.floor(BASE_REWARD * multiplier * prestigeMult);
+          setScore((s) => s + reward);
+          playScoreAnimation(reward);
+        }
       } else if (isDiamondTarget) {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
         updateAndPersistDiamonds(diamondGain);
@@ -769,7 +779,7 @@ export default function GameScreen() {
   const strokeDasharray = `${(activeZoneSize / 360) * circumference} ${circumference}`;
   const strokeDashoffset = -(targetAngle / 360) * circumference;
   const isDirectionWarning = gameState === 'PLAYING' && combo > 0 && (combo + 1) % 5 === 0;
-  const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL' || gameState === 'FIREWALL_TUTORIAL';
+  const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL';
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: displayWorld.bg }]}>
@@ -867,6 +877,7 @@ export default function GameScreen() {
           bank={bank}
           rankUpModal={rankUpModal}
           setRankUpModal={setRankUpModal}
+          startFirewallFromModal={startFirewallFromModal} // מעבירים את הפונקציה ל-UI!
         />
 
       </Animated.View>

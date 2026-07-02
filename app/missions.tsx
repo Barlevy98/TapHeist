@@ -19,12 +19,10 @@ export default function MissionsScreen() {
   const [stats, setStats] = useState({ combo: 0, multiplier: 1, bank: 0 });
   const [claimedMissions, setClaimedMissions] = useState<string[]>([]);
 
-  // סטייט נתונים שבועיים
   const [weeklyMissions, setWeeklyMissions] = useState<WeeklyMission[]>([]);
   const [weeklyClaimed, setWeeklyClaimed] = useState<string[]>([]);
   const [weeklyHeistsCount, setWeeklyHeistsCount] = useState(0);
   
-  // --- V1.4: הוספת משתנים למעקב אחר שיאים שבועיים ---
   const [weeklyMaxCombo, setWeeklyMaxCombo] = useState(0);
   const [weeklyMaxMultiplier, setWeeklyMaxMultiplier] = useState(1);
   
@@ -49,18 +47,18 @@ export default function MissionsScreen() {
       const maxMult = await SecureStore.getItemAsync('stat_maxMultiplier');
       const maxBank = await SecureStore.getItemAsync('stat_maxBank');
 
-      if (savedBank) setBank(parseInt(savedBank));
-      if (savedDiamonds) setDiamonds(parseInt(savedDiamonds));
+      // הוחלף ל-Number
+      if (savedBank) setBank(Number(savedBank));
+      if (savedDiamonds) setDiamonds(Number(savedDiamonds));
       if (savedUnlocked) setUnlockedSkins(JSON.parse(savedUnlocked));
       if (savedClaimed) setClaimedMissions(JSON.parse(savedClaimed));
 
       setStats({
-        combo: maxCombo ? parseInt(maxCombo) : 0,
-        multiplier: maxMult ? parseInt(maxMult) : 1,
-        bank: maxBank ? parseInt(maxBank) : 0,
+        combo: maxCombo ? Number(maxCombo) : 0,
+        multiplier: maxMult ? Number(maxMult) : 1,
+        bank: maxBank ? Number(maxBank) : 0,
       });
 
-      // משיכת הנתונים השבועיים ועדכון הסטייט החדש
       const wData = await loadWeeklyMissionsData();
       setWeeklyMissions(wData.missions);
       setWeeklyClaimed(wData.claimed);
@@ -129,7 +127,6 @@ export default function MissionsScreen() {
     return { current, target: mission.target, isCompleted: current >= mission.target };
   };
 
-  // --- V1.4: תיקון בדיקת ההתקדמות השבועית שתשאב מהמשתנים השבועיים ---
   const checkWeeklyProgress = (mission: WeeklyMission) => {
     let current = 0;
     if (mission.type === 'combo') current = weeklyMaxCombo;
