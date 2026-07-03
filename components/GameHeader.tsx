@@ -43,10 +43,11 @@ export default function GameHeader({
       <View style={styles.header}>
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
-          <Text style={styles.bankText} adjustsFontSizeToFit numberOfLines={1}>${formatNumber(bank)}</Text>
+          {/* הוסרו תכונות הכיווץ האוטומטי */}
+          <Text style={styles.bankText} numberOfLines={1}>${formatNumber(bank)}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
              <DiamondSvg color="#00FFFF" size={14} />
-             <Text style={styles.diamondText} adjustsFontSizeToFit numberOfLines={1}> {formatNumber(diamonds)}</Text>
+             <Text style={styles.diamondText} numberOfLines={1}> {formatNumber(diamonds)}</Text>
           </View>
         </View>
 
@@ -56,11 +57,10 @@ export default function GameHeader({
               {activeWorld.id === 'diamond_world' ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
                   <DiamondSvg color={activeWorld.textPrimary} size={28} />
-                  {/* נמחקה ההצללה מהטקסט כדי למנוע את הריבוע הלבן */}
-                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]} adjustsFontSizeToFit numberOfLines={1}> {formatNumber(runDiamondsEarned)}</Text>
+                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]} numberOfLines={1}> {formatNumber(runDiamondsEarned)}</Text>
                 </View>
               ) : (
-                <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]} adjustsFontSizeToFit numberOfLines={1}>${formatNumber(score)}</Text>
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]} numberOfLines={1}>${formatNumber(score)}</Text>
               )}
               
               <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
@@ -126,19 +126,24 @@ const styles = StyleSheet.create({
   header: { position: 'absolute', top: 20, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, zIndex: 10 },
   bankContainer: { alignItems: 'flex-start', flex: 1, paddingRight: 10 },
   bankLabel: { fontSize: 14, fontWeight: 'bold', letterSpacing: 2 },
-  bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900', width: '100%' },
-  diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', width: '100%' },
+  
+  // הוספת שקיפות כפויה
+  bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900', width: '100%', backgroundColor: 'transparent' },
+  diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold', width: '100%', backgroundColor: 'transparent' },
   scoreContainer: { alignItems: 'flex-end', flex: 1, paddingLeft: 10 },
-  // נמחקה ההצללה המובנית מהסטייל
-  scoreText: { fontSize: 40, fontWeight: '900', width: '100%', textAlign: 'right' },
+  
+  // הקטנת הפונט ל-32 כדי למנוע חריגה, והוספת שקיפות
+  scoreText: { fontSize: 32, fontWeight: '900', width: '100%', textAlign: 'right', backgroundColor: 'transparent' },
   floatingScoreContainer: { position: 'absolute', right: 0, top: -30, flexDirection: 'row', alignItems: 'center' },
-  // נמחקה ההצללה המובנית מהסטייל
-  floatingScoreText: { fontSize: 24, fontWeight: '900' },
-  multiplierText: { color: '#FFCC00', fontSize: 14, fontWeight: 'bold', letterSpacing: 1, marginTop: -5 },
+  floatingScoreText: { fontSize: 24, fontWeight: '900', backgroundColor: 'transparent' },
+  multiplierText: { color: '#FFCC00', fontSize: 14, fontWeight: 'bold', letterSpacing: 1, marginTop: -5, backgroundColor: 'transparent' },
+  
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
   comboHeader: { position: 'absolute', top: 100, width: '100%', alignItems: 'center', zIndex: 10 },
-  comboText: { fontSize: 28, fontWeight: '900', letterSpacing: 3, opacity: 0.8 },
-  warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1 },
-  nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2 },
+  
+  // שקיפות לשאר הטקסטים המרצדים
+  comboText: { fontSize: 28, fontWeight: '900', letterSpacing: 3, opacity: 0.8, backgroundColor: 'transparent' },
+  warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1, backgroundColor: 'transparent' },
+  nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2, backgroundColor: 'transparent' },
 });
