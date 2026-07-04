@@ -23,7 +23,7 @@ export default function VaultRing({
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
   
-  // הבלוק יהיה ירוק רגיל, או שחור כשהמטרה היא יהלום שחור בעולם הסייברפאנק!
+  // הבלוק יהיה בצבע הרגיל, או בצבע היהלום כשהוא נבחר (גם במהלך Firewall)
   const blockColor = isDiamondTarget ? displayColor : '#00FF66';
 
   return (

@@ -47,7 +47,6 @@ export async function getPowerUpInventory(): Promise<Record<string, number>> {
   const freeze = await SecureStore.getItemAsync(STORAGE_KEYS.inv_time_freeze);
   const focus = await SecureStore.getItemAsync(STORAGE_KEYS.inv_precision_focus);
   return {
-    // הוחלף ל-Number
     smart_shield: shield ? Number(shield) : 0,
     time_freeze: freeze ? Number(freeze) : 0,
     precision_focus: focus ? Number(focus) : 0,
@@ -358,6 +357,47 @@ export function getRankReward(rank: string): { type: 'cash' | 'diamond', amount:
     case 'APEX SINGULARITY': return { type: 'diamond', amount: 10000 };
     default: return null;
   }
+}
+
+// --- פונקציה חדשה: מחשבת את הראנק הבא ואת אחוזי ההתקדמות לקראתו ---
+export function getNextRankDetails(heists: number, maxCombo: number) {
+  const currentRank = getHackerRank(heists, maxCombo);
+  const currentIndex = RANKS_ORDER.indexOf(currentRank);
+
+  if (currentIndex === RANKS_ORDER.length - 1) {
+    return null; // כבר בדרגה הגבוהה ביותר
+  }
+
+  const nextRank = RANKS_ORDER[currentIndex + 1];
+  let targetHeists = 0;
+  let targetCombo = 0;
+
+  switch(nextRank) {
+    case 'PACKET SNIFFER': targetHeists = 5; targetCombo = 8; break;
+    case 'MALWARE DEV': targetHeists = 10; targetCombo = 12; break;
+    case 'WHITE HAT': targetHeists = 25; targetCombo = 20; break;
+    case 'SYSTEM ADMIN': targetHeists = 50; targetCombo = 25; break;
+    case 'BLACK HAT': targetHeists = 80; targetCombo = 35; break;
+    case 'CYBER DEMON': targetHeists = 120; targetCombo = 45; break;
+    case 'NETRUNNER': targetHeists = 200; targetCombo = 55; break;
+    case 'MASTER PHANTOM': targetHeists = 350; targetCombo = 70; break;
+    case 'GHOST IN THE MACHINE': targetHeists = 500; targetCombo = 85; break;
+    case 'THE ARCHITECT': targetHeists = 750; targetCombo = 100; break;
+    case 'CYBER GOD': targetHeists = 1000; targetCombo = 120; break;
+    case 'APEX SINGULARITY': targetHeists = 2500; targetCombo = 150; break;
+  }
+
+  const heistsProgress = Math.min(heists / targetHeists, 1);
+  const comboProgress = Math.min(maxCombo / targetCombo, 1);
+
+  return {
+    name: nextRank,
+    targetHeists,
+    targetCombo,
+    heistsProgress,
+    comboProgress,
+    reward: getRankReward(nextRank)
+  };
 }
 
 export function getCumulativeRankRewards(oldRank: string, newRank: string) {

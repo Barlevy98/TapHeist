@@ -116,9 +116,6 @@ export default function GameScreen() {
   const [prestigeMult, setPrestigeMult] = useState(1);
   const [gamesSinceFirewall, setGamesSinceFirewall] = useState(0);
   const [isFirewallActive, setIsFirewallActive] = useState(false);
-  
-  // הוספת סטייט חדש לבחירת המטרה ב-Firewall
-  const [firewallMode, setFirewallMode] = useState<'diamond' | 'cash' | null>(null);
 
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
   const [gamesSinceAd, setGamesSinceAd] = useState(0);
@@ -250,7 +247,6 @@ export default function GameScreen() {
       const savedPrestigeMult = await SecureStore.getItemAsync(STORAGE_KEYS.prestigeMultiplier);
       const savedFirewallGames = await SecureStore.getItemAsync(STORAGE_KEYS.gamesSinceFirewall);
 
-      // תיקון השימוש ב-Number במקום parseInt כדי לא לחתוך כתיב מדעי
       const currentBank = savedBank ? Number(savedBank) : 0;
       const currentDiamonds = savedDiamonds ? Number(savedDiamonds) : 0;
       const uSkins = unlockedSkinsRaw ? JSON.parse(unlockedSkinsRaw) : ['white'];
@@ -379,7 +375,8 @@ export default function GameScreen() {
     const newAngle = Math.floor(Math.random() * (360 - activeZoneSize));
     setTargetAngle(newAngle);
     
-    const isDiamond = isFirewallActive || (activeWorld.id === 'diamond_world' ? true : (Math.random() < DIAMOND_CHANCE));
+    // ב-Firewall יש סיכוי של 20% ליהלום בדיוק כמו במשחק הרגיל!
+    const isDiamond = activeWorld.id === 'diamond_world' ? true : (Math.random() < DIAMOND_CHANCE);
     setIsDiamondTarget(isDiamond);
 
     if (isDiamond && !hasSeenDiamondTutorial) {
@@ -427,7 +424,6 @@ export default function GameScreen() {
     setRunMaxCombo(0);
     setRunDiamondsEarned(0);
     setHasRevivedThisRun(false); 
-    setFirewallMode(null); // איפוס הבחירה הקודמת
     
     setStartRank(getHackerRank(totalHeists, lifetimeMaxCombo));
 
@@ -458,21 +454,15 @@ export default function GameScreen() {
     closeInventory();
     
     if (triggerFirewall) {
-      // מעכשיו תמיד מציגים את המודאל של בחירת ה-Firewall
-      setGameState('FIREWALL_MODAL');
+      // בוטל המודאל! ישר מתחילים לשחק את ה-Firewall
+      setGameState('PLAYING');
+      setTimeout(() => {
+        randomizeTarget();
+        startRotation(getSpeedDuration(0), 1);
+      }, 0);
       return; 
     }
 
-    setGameState('PLAYING');
-    setTimeout(() => {
-      randomizeTarget();
-      startRotation(getSpeedDuration(0), 1);
-    }, 0);
-  };
-
-  const startFirewallFromModal = (mode: 'diamond' | 'cash') => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setFirewallMode(mode);
     setGameState('PLAYING');
     setTimeout(() => {
       randomizeTarget();
@@ -655,7 +645,6 @@ export default function GameScreen() {
   const handleTap = async () => {
     if (gameState === 'START' || gameState === 'CASHED_OUT') { await requestStartGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
-    if (gameState === 'FIREWALL_MODAL') return; 
     if (gameState !== 'PLAYING') return;
     if (isInventoryOpen) { closeInventory(); return; }
 
@@ -692,20 +681,19 @@ export default function GameScreen() {
       const tier = getRewardTier(newCombo, activeWorld.id);
       const diamondGain = tier.gain;
 
-      // טיפול משודרג בבונוס ה-Firewall (בהתאם לבחירה במודאל)
+      // לוגיקת ה-Firewall החדשה: 80% כסף מרובע, 20% יהלומים!
       if (isFirewallActive) {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
         
-        if (firewallMode === 'cash') {
-          // בחרנו כסף - מקבל כפול 4 מהמכפיל!
-          const reward = Math.floor(BASE_REWARD * (multiplier * 4) * prestigeMult);
-          setScore((s) => s + reward);
-          playScoreAnimation(reward);
-        } else {
-          // בחרנו יהלומים - מקבל 3 מובטחים + הניקוד הרגיל
+        if (isDiamondTarget) {
           updateAndPersistDiamonds(3);
           setRunDiamondsEarned((d) => d + 3);
           const reward = Math.floor(BASE_REWARD * multiplier * prestigeMult);
+          setScore((s) => s + reward);
+          playScoreAnimation(reward);
+        } else {
+          // פגעת בבלוק רגיל ב-Firewall - קבל פי 4 מהמכפיל שלך!
+          const reward = Math.floor(BASE_REWARD * (multiplier * 4) * prestigeMult);
           setScore((s) => s + reward);
           playScoreAnimation(reward);
         }
@@ -877,7 +865,6 @@ export default function GameScreen() {
           bank={bank}
           rankUpModal={rankUpModal}
           setRankUpModal={setRankUpModal}
-          startFirewallFromModal={startFirewallFromModal} // מעבירים את הפונקציה ל-UI!
         />
 
       </Animated.View>

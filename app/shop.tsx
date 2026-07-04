@@ -317,7 +317,7 @@ export default function ShopScreen() {
 
           {activeTab === 'worlds' && (
             <>
-              <Text style={styles.categoryDivider}>--- FIAT CURRENCY WORLDS ---</Text>
+             
               
               {WORLDS.filter(w => w.currency === 'cash').map((world) => {
                 const isUnlocked = unlockedWorlds.includes(world.id);
@@ -342,8 +342,6 @@ export default function ShopScreen() {
                   </TouchableOpacity>
                 );
               })}
-
-              <Text style={styles.categoryDivider}>--- PREMIUM DIAMOND WORLDS ---</Text>
               
               {WORLDS.filter(w => w.currency === 'diamond').map((world) => {
                 const isUnlocked = unlockedWorlds.includes(world.id);
