@@ -45,44 +45,44 @@ export default function GameHeader({
         {/* צד שמאל - בנק */}
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
-          <Text style={styles.bankText}>${formatNumber(bank)}</Text>
+          <Text style={[styles.bankText, { fontVariant: ['tabular-nums'] }]}>${formatNumber(bank)}</Text>
           <View style={styles.diamondRow}>
              <DiamondSvg color="#00FFFF" size={12} />
-             <Text style={styles.diamondText}> {formatNumber(diamonds)}</Text>
+             <Text style={[styles.diamondText, { fontVariant: ['tabular-nums'] }]}> {formatNumber(diamonds)}</Text>
           </View>
         </View>
 
         {/* צד ימין - ניקוד ומכפיל */}
         {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
           <View style={styles.scoreContainer}>
-            <View style={styles.scoreInner}>
-              
-              {activeWorld.id === 'diamond_world' ? (
-                <View style={styles.diamondRowRight}>
-                  <DiamondSvg color={activeWorld.textPrimary} size={22} />
-                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]}> {formatNumber(runDiamondsEarned)}</Text>
-                </View>
-              ) : (
-                <Text style={[styles.scoreText, { color: activeSkin.color }]}>${formatNumber(score)}</Text>
-              )}
-              
-              <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
-                <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? (isBlack ? '#FFF' : displayColor) : activeSkin.color }]}>
-                  +{formatNumber(lastRewardEarned)}{!isDiamondTarget && '$'}
-                </Text>
-                {isDiamondTarget && (
-                  <View style={{ marginLeft: 3 }}>
-                    <DiamondSvg color={displayColor} size={14} isBlack={isBlack} />
-                  </View>
-                )}
-              </Animated.View>
-
-            </View>
             
-            {multiplier > 1 && (
-              <Text style={styles.multiplierText}>x{formatNumber(multiplier)} MULTIPLIER</Text>
+            {activeWorld.id === 'diamond_world' ? (
+              <View style={styles.diamondRowRight}>
+                <DiamondSvg color={activeWorld.textPrimary} size={22} />
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, fontVariant: ['tabular-nums'] }]}> {formatNumber(runDiamondsEarned)}</Text>
+              </View>
+            ) : (
+              <Text style={[styles.scoreText, { color: activeSkin.color, fontVariant: ['tabular-nums'] }]}>${formatNumber(score)}</Text>
             )}
             
+            {/* המכפיל תמיד עוטף 100% רוחב כדי למנוע את באג הרקע הלבן */}
+            {multiplier > 1 ? (
+              <Text style={[styles.multiplierText, { fontVariant: ['tabular-nums'], opacity: 1 }]}>x{formatNumber(multiplier)} MULTIPLIER</Text>
+            ) : (
+              <Text style={[styles.multiplierText, { opacity: 0 }]}>x1 MULTIPLIER</Text>
+            )}
+
+            <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
+              <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? (isBlack ? '#FFF' : displayColor) : activeSkin.color, fontVariant: ['tabular-nums'] }]}>
+                +{formatNumber(lastRewardEarned)}{!isDiamondTarget && '$'}
+              </Text>
+              {isDiamondTarget && (
+                <View style={{ marginLeft: 3 }}>
+                  <DiamondSvg color={displayColor} size={14} isBlack={isBlack} />
+                </View>
+              )}
+            </Animated.View>
+
           </View>
         )}
       </View>
@@ -119,7 +119,7 @@ export default function GameHeader({
       {(gameState === 'PLAYING' || gameState === 'RISK') && combo > 0 && (
         <View style={styles.comboHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={[styles.comboText, { color: activeSkin.color }]}>{combo} COMBO</Text>
+            <Text style={[styles.comboText, { color: activeSkin.color, fontVariant: ['tabular-nums'] }]}>{combo} COMBO</Text>
           </View>
           {gameState === 'PLAYING' && isDirectionWarning && !isFirewallActive && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
           {gameState === 'PLAYING' && isFirewallActive && <Text style={[styles.warningText, { color: '#FF3B30', fontSize: 16 }]}>🚨 DANGER ZONE: FIREWALL 🚨</Text>}
@@ -133,21 +133,23 @@ export default function GameHeader({
 const styles = StyleSheet.create({
   header: { position: 'absolute', top: 20, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, zIndex: 10 },
   
-  // אזור שמאלי - בנק (פונטים הוקטנו למניעת גלישה)
+  // אזור שמאלי - בנק 
   bankContainer: { alignItems: 'flex-start', flex: 1, paddingRight: 10 },
   bankLabel: { fontSize: 12, fontWeight: 'bold', letterSpacing: 2 },
-  bankText: { color: '#00FF66', fontSize: 20, fontWeight: '900', backgroundColor: 'transparent', overflow: 'visible' },
-  diamondRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  diamondText: { color: '#00FFFF', fontSize: 16, fontWeight: 'bold', backgroundColor: 'transparent', overflow: 'visible' },
+  bankText: { color: '#00FF66', fontSize: 20, fontWeight: '900', backgroundColor: 'transparent', width: '100%', textAlign: 'left' },
+  diamondRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2, width: '100%' },
+  diamondText: { color: '#00FFFF', fontSize: 16, fontWeight: 'bold', backgroundColor: 'transparent', textAlign: 'left' },
   
-  // אזור ימני - ניקוד ומכפיל (הוקטנו משמעותית למניעת רנדור-מחדש של iOS)
-  scoreContainer: { alignItems: 'flex-end', flex: 1, paddingLeft: 10 },
-  scoreInner: { alignItems: 'flex-end' },
-  diamondRowRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
-  scoreText: { fontSize: 26, fontWeight: '900', textAlign: 'right', backgroundColor: 'transparent', overflow: 'visible' },
+  // אזור ימני - הקופסה תופסת את כל הרוחב הפנוי ואין בה alignItems: 'flex-end' כדי למנוע קפיצות רוחב
+  scoreContainer: { flex: 1, paddingLeft: 10, justifyContent: 'flex-start' },
+  diamondRowRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: '100%' },
+  
+  // הטקסטים תופסים 100% רוחב מהקופסה ומיושרים לימין בתוכה - הפתרון לריבוע הלבן!
+  scoreText: { fontSize: 26, fontWeight: '900', textAlign: 'right', backgroundColor: 'transparent', width: '100%' },
+  multiplierText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginTop: -2, backgroundColor: 'transparent', width: '100%', textAlign: 'right' },
+  
   floatingScoreContainer: { position: 'absolute', right: 0, top: -25, flexDirection: 'row', alignItems: 'center' },
-  floatingScoreText: { fontSize: 20, fontWeight: '900', backgroundColor: 'transparent', overflow: 'visible' },
-  multiplierText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginTop: -2, backgroundColor: 'transparent', overflow: 'visible' },
+  floatingScoreText: { fontSize: 20, fontWeight: '900', backgroundColor: 'transparent' },
   
   // HUD וקומבו (ללא שינוי)
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
