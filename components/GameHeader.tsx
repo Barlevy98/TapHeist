@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { formatNumber } from '../gameHelpers'; 
 
-const DiamondSvg = ({ color, size = 18, isBlack = false }: { color: string, size?: number, isBlack?: boolean }) => (
+const DiamondSvg = ({ color, size = 16, isBlack = false }: { color: string, size?: number, isBlack?: boolean }) => (
   <Svg viewBox="0 0 24 24" width={size} height={size}>
     <Path d="M 5 5 L 19 5 L 24 11 L 12 23 L 0 11 Z" fill={color} stroke={isBlack ? "#FFFFFF" : "none"} strokeWidth={isBlack ? 1.5 : 0} />
   </Svg>
@@ -41,25 +41,28 @@ export default function GameHeader({
   return (
     <>
       <View style={styles.header} pointerEvents="box-none">
+        
+        {/* צד שמאל - בנק */}
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
           <Text style={styles.bankText}>${formatNumber(bank)}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-             <DiamondSvg color="#00FFFF" size={14} />
+          <View style={styles.diamondRow}>
+             <DiamondSvg color="#00FFFF" size={12} />
              <Text style={styles.diamondText}> {formatNumber(diamonds)}</Text>
           </View>
         </View>
 
+        {/* צד ימין - ניקוד ומכפיל */}
         {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
           <View style={styles.scoreContainer}>
-            <View>
+            <View style={styles.scoreInner}>
+              
               {activeWorld.id === 'diamond_world' ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                  <DiamondSvg color={activeWorld.textPrimary} size={28} />
+                <View style={styles.diamondRowRight}>
+                  <DiamondSvg color={activeWorld.textPrimary} size={22} />
                   <Text style={[styles.scoreText, { color: activeWorld.textPrimary }]}> {formatNumber(runDiamondsEarned)}</Text>
                 </View>
               ) : (
-                // צבע הכסף של הניקוד עכשיו יתאים בדיוק לצבע הפוינטר שבחרת!
                 <Text style={[styles.scoreText, { color: activeSkin.color }]}>${formatNumber(score)}</Text>
               )}
               
@@ -69,17 +72,22 @@ export default function GameHeader({
                 </Text>
                 {isDiamondTarget && (
                   <View style={{ marginLeft: 3 }}>
-                    <DiamondSvg color={displayColor} size={18} isBlack={isBlack} />
+                    <DiamondSvg color={displayColor} size={14} isBlack={isBlack} />
                   </View>
                 )}
               </Animated.View>
 
             </View>
-            {multiplier > 1 && <Text style={styles.multiplierText}>x{formatNumber(multiplier)} MULTIPLIER</Text>}
+            
+            {multiplier > 1 && (
+              <Text style={styles.multiplierText}>x{formatNumber(multiplier)} MULTIPLIER</Text>
+            )}
+            
           </View>
         )}
       </View>
 
+      {/* --- אלמנטים נוספים נשארו ללא שינוי --- */}
       {gameState === 'PLAYING' && (
         <View style={styles.activeBoostsHud}>
           {isShieldActive && (
@@ -124,22 +132,28 @@ export default function GameHeader({
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', top: 20, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, zIndex: 10 },
+  
+  // אזור שמאלי - בנק (פונטים הוקטנו למניעת גלישה)
   bankContainer: { alignItems: 'flex-start', flex: 1, paddingRight: 10 },
-  bankLabel: { fontSize: 14, fontWeight: 'bold', letterSpacing: 2 },
-  bankText: { color: '#00FF66', fontSize: 24, fontWeight: '900' },
-  diamondText: { color: '#00FFFF', fontSize: 18, fontWeight: 'bold' },
+  bankLabel: { fontSize: 12, fontWeight: 'bold', letterSpacing: 2 },
+  bankText: { color: '#00FF66', fontSize: 20, fontWeight: '900', backgroundColor: 'transparent', overflow: 'visible' },
+  diamondRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  diamondText: { color: '#00FFFF', fontSize: 16, fontWeight: 'bold', backgroundColor: 'transparent', overflow: 'visible' },
+  
+  // אזור ימני - ניקוד ומכפיל (הוקטנו משמעותית למניעת רנדור-מחדש של iOS)
   scoreContainer: { alignItems: 'flex-end', flex: 1, paddingLeft: 10 },
+  scoreInner: { alignItems: 'flex-end' },
+  diamondRowRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  scoreText: { fontSize: 26, fontWeight: '900', textAlign: 'right', backgroundColor: 'transparent', overflow: 'visible' },
+  floatingScoreContainer: { position: 'absolute', right: 0, top: -25, flexDirection: 'row', alignItems: 'center' },
+  floatingScoreText: { fontSize: 20, fontWeight: '900', backgroundColor: 'transparent', overflow: 'visible' },
+  multiplierText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginTop: -2, backgroundColor: 'transparent', overflow: 'visible' },
   
-  // הוסרו לחלוטין הגדרות הכיווץ האוטומטי שגרמו לריבוע הלבן
-  scoreText: { fontSize: 32, fontWeight: '900', textAlign: 'right' },
-  floatingScoreContainer: { position: 'absolute', right: 0, top: -30, flexDirection: 'row', alignItems: 'center' },
-  floatingScoreText: { fontSize: 24, fontWeight: '900' },
-  multiplierText: { color: '#FFCC00', fontSize: 14, fontWeight: 'bold', letterSpacing: 1, marginTop: -5 },
-  
+  // HUD וקומבו (ללא שינוי)
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
   comboHeader: { position: 'absolute', top: 100, width: '100%', alignItems: 'center', zIndex: 10 },
-  comboText: { fontSize: 28, fontWeight: '900', letterSpacing: 3, opacity: 0.8 },
-  warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1 },
-  nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2 },
+  comboText: { fontSize: 28, fontWeight: '900', letterSpacing: 3, opacity: 0.8, backgroundColor: 'transparent' },
+  warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1, backgroundColor: 'transparent' },
+  nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2, backgroundColor: 'transparent' },
 });
