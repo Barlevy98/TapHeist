@@ -10,6 +10,14 @@ const DiamondSvg = ({ color, size = 16, isBlack = false }: { color: string, size
   </Svg>
 );
 
+// הפונקציה שמחשבת את הגודל מראש ומונעת את הריבוע הלבן!
+const getDynSize = (textLength: number, baseSize: number) => {
+  if (textLength > 18) return Math.floor(baseSize * 0.55);
+  if (textLength > 14) return Math.floor(baseSize * 0.70);
+  if (textLength > 10) return Math.floor(baseSize * 0.85);
+  return baseSize;
+};
+
 export default function GameHeader({
   activeWorld,
   activeSkin,
@@ -38,6 +46,15 @@ export default function GameHeader({
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
 
+  // הכנת המחרוזות כדי למדוד את האורך שלהן
+  const bankStr = `$${formatNumber(bank)}`;
+  const diamondsStr = ` ${formatNumber(diamonds)}`;
+  const scoreStr = `$${formatNumber(score)}`;
+  const diamondScoreStr = ` ${formatNumber(runDiamondsEarned)}`;
+  const multStr = `x${formatNumber(multiplier)} MULTIPLIER`;
+  const lastRewardStr = `+${formatNumber(lastRewardEarned)}${!isDiamondTarget ? '$' : ''}`;
+  const comboStr = `${combo} COMBO`;
+
   return (
     <>
       <View style={styles.header} pointerEvents="box-none">
@@ -45,10 +62,10 @@ export default function GameHeader({
         {/* צד שמאל - בנק */}
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
-          <Text style={[styles.bankText, { fontVariant: ['tabular-nums'] }]}>${formatNumber(bank)}</Text>
+          <Text style={[styles.bankText, { fontSize: getDynSize(bankStr.length, 20) }]} numberOfLines={1}>{bankStr}</Text>
           <View style={styles.diamondRow}>
              <DiamondSvg color="#00FFFF" size={12} />
-             <Text style={[styles.diamondText, { fontVariant: ['tabular-nums'] }]}> {formatNumber(diamonds)}</Text>
+             <Text style={[styles.diamondText, { fontSize: getDynSize(diamondsStr.length, 16) }]} numberOfLines={1}>{diamondsStr}</Text>
           </View>
         </View>
 
@@ -56,25 +73,26 @@ export default function GameHeader({
         {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
           <View style={styles.scoreContainer}>
             
-            {activeWorld.id === 'diamond_world' ? (
-              <View style={styles.diamondRowRight}>
-                <DiamondSvg color={activeWorld.textPrimary} size={22} />
-                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, fontVariant: ['tabular-nums'] }]}> {formatNumber(runDiamondsEarned)}</Text>
-              </View>
-            ) : (
-              <Text style={[styles.scoreText, { color: activeSkin.color, fontVariant: ['tabular-nums'] }]}>${formatNumber(score)}</Text>
-            )}
+            <View style={styles.diamondRowRight}>
+              {activeWorld.id === 'diamond_world' ? (
+                <>
+                  <DiamondSvg color={activeWorld.textPrimary} size={22} />
+                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, fontSize: getDynSize(diamondScoreStr.length, 28) }]} numberOfLines={1}>{diamondScoreStr}</Text>
+                </>
+              ) : (
+                <Text style={[styles.scoreText, { color: activeSkin.color, fontSize: getDynSize(scoreStr.length, 28) }]} numberOfLines={1}>{scoreStr}</Text>
+              )}
+            </View>
             
-            {/* המכפיל תמיד עוטף 100% רוחב כדי למנוע את באג הרקע הלבן */}
             {multiplier > 1 ? (
-              <Text style={[styles.multiplierText, { fontVariant: ['tabular-nums'], opacity: 1 }]}>x{formatNumber(multiplier)} MULTIPLIER</Text>
+              <Text style={[styles.multiplierText, { opacity: 1, fontSize: getDynSize(multStr.length, 12) }]} numberOfLines={1}>{multStr}</Text>
             ) : (
-              <Text style={[styles.multiplierText, { opacity: 0 }]}>x1 MULTIPLIER</Text>
+              <Text style={[styles.multiplierText, { opacity: 0, fontSize: 12 }]} numberOfLines={1}>x1 MULTIPLIER</Text>
             )}
 
             <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
-              <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? (isBlack ? '#FFF' : displayColor) : activeSkin.color, fontVariant: ['tabular-nums'] }]}>
-                +{formatNumber(lastRewardEarned)}{!isDiamondTarget && '$'}
+              <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? (isBlack ? '#FFF' : displayColor) : activeSkin.color, fontSize: getDynSize(lastRewardStr.length, 20) }]} numberOfLines={1}>
+                {lastRewardStr}
               </Text>
               {isDiamondTarget && (
                 <View style={{ marginLeft: 3 }}>
@@ -87,7 +105,7 @@ export default function GameHeader({
         )}
       </View>
 
-      {/* --- אלמנטים נוספים נשארו ללא שינוי --- */}
+      {/* --- אלמנטים נוספים --- */}
       {gameState === 'PLAYING' && (
         <View style={styles.activeBoostsHud}>
           {isShieldActive && (
@@ -119,7 +137,7 @@ export default function GameHeader({
       {(gameState === 'PLAYING' || gameState === 'RISK') && combo > 0 && (
         <View style={styles.comboHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={[styles.comboText, { color: activeSkin.color, fontVariant: ['tabular-nums'] }]}>{combo} COMBO</Text>
+            <Text style={[styles.comboText, { color: activeSkin.color, fontSize: getDynSize(comboStr.length, 28) }]} numberOfLines={1}>{comboStr}</Text>
           </View>
           {gameState === 'PLAYING' && isDirectionWarning && !isFirewallActive && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
           {gameState === 'PLAYING' && isFirewallActive && <Text style={[styles.warningText, { color: '#FF3B30', fontSize: 16 }]}>🚨 DANGER ZONE: FIREWALL 🚨</Text>}
@@ -132,30 +150,21 @@ export default function GameHeader({
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', top: 20, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, zIndex: 10 },
-  
-  // אזור שמאלי - בנק 
   bankContainer: { alignItems: 'flex-start', flex: 1, paddingRight: 10 },
   bankLabel: { fontSize: 12, fontWeight: 'bold', letterSpacing: 2 },
-  bankText: { color: '#00FF66', fontSize: 20, fontWeight: '900', backgroundColor: 'transparent', width: '100%', textAlign: 'left' },
-  diamondRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2, width: '100%' },
-  diamondText: { color: '#00FFFF', fontSize: 16, fontWeight: 'bold', backgroundColor: 'transparent', textAlign: 'left' },
-  
-  // אזור ימני - הקופסה תופסת את כל הרוחב הפנוי ואין בה alignItems: 'flex-end' כדי למנוע קפיצות רוחב
+  bankText: { color: '#00FF66', fontWeight: '900', backgroundColor: 'transparent', textAlign: 'left' },
+  diamondRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  diamondText: { color: '#00FFFF', fontWeight: 'bold', backgroundColor: 'transparent', textAlign: 'left' },
   scoreContainer: { flex: 1, paddingLeft: 10, justifyContent: 'flex-start' },
   diamondRowRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: '100%' },
-  
-  // הטקסטים תופסים 100% רוחב מהקופסה ומיושרים לימין בתוכה - הפתרון לריבוע הלבן!
-  scoreText: { fontSize: 26, fontWeight: '900', textAlign: 'right', backgroundColor: 'transparent', width: '100%' },
-  multiplierText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginTop: -2, backgroundColor: 'transparent', width: '100%', textAlign: 'right' },
-  
+  scoreText: { fontWeight: '900', textAlign: 'right', backgroundColor: 'transparent', width: '100%' },
+  multiplierText: { color: '#FFCC00', fontWeight: 'bold', letterSpacing: 1, marginTop: -2, backgroundColor: 'transparent', width: '100%', textAlign: 'right' },
   floatingScoreContainer: { position: 'absolute', right: 0, top: -25, flexDirection: 'row', alignItems: 'center' },
-  floatingScoreText: { fontSize: 20, fontWeight: '900', backgroundColor: 'transparent' },
-  
-  // HUD וקומבו (ללא שינוי)
+  floatingScoreText: { fontWeight: '900', backgroundColor: 'transparent' },
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
   comboHeader: { position: 'absolute', top: 100, width: '100%', alignItems: 'center', zIndex: 10 },
-  comboText: { fontSize: 28, fontWeight: '900', letterSpacing: 3, opacity: 0.8, backgroundColor: 'transparent' },
+  comboText: { fontWeight: '900', letterSpacing: 3, opacity: 0.8, backgroundColor: 'transparent' },
   warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1, backgroundColor: 'transparent' },
   nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2, backgroundColor: 'transparent' },
 });

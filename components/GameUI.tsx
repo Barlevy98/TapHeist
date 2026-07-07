@@ -4,6 +4,14 @@ import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { CORE_TUTORIAL_STEPS, formatNumber } from '../gameHelpers';
 
+// הפונקציה שמחשבת את הגודל מראש לכפתורים ולטקסטים ארוכים!
+const getBtnDynSize = (textLength: number, baseSize: number) => {
+  if (textLength > 28) return Math.floor(baseSize * 0.60);
+  if (textLength > 22) return Math.floor(baseSize * 0.75);
+  if (textLength > 16) return Math.floor(baseSize * 0.85);
+  return baseSize;
+};
+
 export default function GameUI({
   gameState,
   setGameState,
@@ -43,9 +51,19 @@ export default function GameUI({
 
   const [showPrestigeConfirm, setShowPrestigeConfirm] = useState(false);
 
+  // חישוב מראש של המחרוזות כדי למדוד את אורכן
+  const cashOutStr = `CASH OUT ($${formatNumber(score)})`;
+  const riskItStr = `RISK IT (x${formatNumber(multiplier * 2)})`;
+  const nextUnlockStr = mainNextUnlock ? `NEXT OBJECTIVE: ${mainNextUnlock.name} (${mainNextUnlock.currency === 'diamond' ? '💎' : '$'}${formatNumber(mainNextUnlock.missing)} LEFT)` : '';
+  const runStatsStr = `Run: ${runMaxCombo} combo · x${formatNumber(multiplier)} peak · 💎 ${runDiamondsEarned} this heist`;
+  const finalCashStr = `Transferred $${formatNumber(score)} to Bank`;
+  const finalGemStr = `Secured 💎 ${formatNumber(runDiamondsEarned)} to Vault`;
+  const scrappedCashStr = `Scrapped 25% of earnings: +$${formatNumber(consolationPrize)}`;
+  const scrappedGemStr = `Kept 100% of mined gems: 💎 ${formatNumber(runDiamondsEarned)}`;
+
   const renderRunStats = () => (
-    <Text style={styles.runStatsText}>
-      Run: {runMaxCombo} combo · x{formatNumber(multiplier)} peak · 💎 {runDiamondsEarned} this heist
+    <Text style={[styles.runStatsText, { fontSize: getBtnDynSize(runStatsStr.length, 13) }]} numberOfLines={1}>
+      {runStatsStr}
     </Text>
   );
 
@@ -54,15 +72,15 @@ export default function GameUI({
       <View style={styles.uiContainer} pointerEvents="box-none">
         {gameState === 'START' && (
           <View style={{ alignItems: 'center' }}>
-            <Text style={[styles.actionText, { color: activeWorld.textPrimary }]}>TAP TO HACK</Text>
+            <Text style={[styles.actionText, { color: activeWorld.textPrimary }]} numberOfLines={1}>TAP TO HACK</Text>
             
-            <Text style={styles.rankText}>
+            <Text style={styles.rankText} numberOfLines={1}>
               RANK: {hackerRank} {prestigeMult > 1 ? `| GHOST x${prestigeMult}` : ''}
             </Text>
             
             {prestigeOffer && (
               <TouchableOpacity onPress={() => setShowPrestigeConfirm(true)} style={styles.prestigeButton}>
-                <Text style={styles.prestigeTitle}>💀 GHOST PROTOCOL 💀</Text>
+                <Text style={styles.prestigeTitle} numberOfLines={1}>💀 GHOST PROTOCOL 💀</Text>
                 <Text style={styles.prestigeDesc}>Burn ALL YOUR CASH for permanent x{prestigeOffer.mult} multiplier!</Text>
               </TouchableOpacity>
             )}
@@ -75,8 +93,8 @@ export default function GameUI({
             )}
 
             {mainNextUnlock && !prestigeOffer && !isFirewallActive && (
-              <Text style={styles.mainNextUnlockText}>
-                NEXT OBJECTIVE: {mainNextUnlock.name} ({mainNextUnlock.currency === 'diamond' ? '💎' : '$'}{formatNumber(mainNextUnlock.missing)} LEFT)
+              <Text style={[styles.mainNextUnlockText, { fontSize: getBtnDynSize(nextUnlockStr.length, 11) }]} numberOfLines={1}>
+                {nextUnlockStr}
               </Text>
             )}
 
@@ -108,7 +126,7 @@ export default function GameUI({
 
         {gameState === 'RISK' && (
           <View style={styles.riskContainer} pointerEvents="box-none">
-            <Text style={styles.riskTitle}>RISK MODE</Text>
+            <Text style={styles.riskTitle} numberOfLines={1}>RISK MODE</Text>
             <Text style={styles.riskSubtitle}>System Paused</Text>
             {showRiskTutorial && (
               <View style={styles.riskTutorialBox}>
@@ -117,20 +135,19 @@ export default function GameUI({
               </View>
             )}
             
-            {/* נמחקו פקודות הכיווץ כדי להעלים את הריבוע באייפון */}
             <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}>
-              <Text style={styles.cashOutText}>CASH OUT (${formatNumber(score)})</Text>
+              <Text style={[styles.cashOutText, { fontSize: getBtnDynSize(cashOutStr.length, 18) }]} numberOfLines={1}>{cashOutStr}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}>
-              <Text style={styles.riskItText}>RISK IT (x{formatNumber(multiplier * 2)})</Text>
+              <Text style={[styles.riskItText, { fontSize: getBtnDynSize(riskItStr.length, 18) }]} numberOfLines={1}>{riskItStr}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {gameState === 'REVIVE_OFFER' && (
           <View style={styles.gameOverContainer}>
-            <Text style={[styles.gameOverText, { color: '#FFCC00' }]}>SYSTEM COMPROMISED</Text>
+            <Text style={[styles.gameOverText, { color: '#FFCC00' }]} numberOfLines={1}>SYSTEM COMPROMISED</Text>
             <Text style={styles.scrappedText}>Inject backdoor to resume hack?</Text>
             <TouchableOpacity onPress={onRevive} style={[styles.retryButton, { backgroundColor: '#FFCC00', marginBottom: 12, paddingHorizontal: 30 }]}><Text style={[styles.retryButtonText, { color: '#000' }]}>WATCH AD TO REVIVE</Text></TouchableOpacity>
             <TouchableOpacity onPress={processGameOver} style={styles.secondaryActionButton}>
@@ -143,11 +160,11 @@ export default function GameUI({
 
         {gameState === 'CASHED_OUT' && (
           <Animated.View style={[styles.gameOverContainer, successPulseStyle]}>
-            <Text style={styles.successText}>HACK SUCCESSFUL</Text>
+            <Text style={styles.successText} numberOfLines={1}>HACK SUCCESSFUL</Text>
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Secured 💎 {formatNumber(runDiamondsEarned)} to Vault</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary, fontSize: getBtnDynSize(finalGemStr.length, 18) }]} numberOfLines={1}>{finalGemStr}</Text>
             ) : (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]}>Transferred ${formatNumber(score)} to Bank</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary, fontSize: getBtnDynSize(finalCashStr.length, 18) }]} numberOfLines={1}>{finalCashStr}</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>NEXT HEIST</Text></TouchableOpacity>
@@ -159,11 +176,11 @@ export default function GameUI({
 
         {gameState === 'GAMEOVER' && (
           <View style={styles.gameOverContainer}>
-            <Text style={styles.gameOverText}>SYSTEM LOCKED</Text>
+            <Text style={styles.gameOverText} numberOfLines={1}>SYSTEM LOCKED</Text>
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.scrappedText, { color: '#00FFFF' }]}>Kept 100% of mined gems: 💎 {formatNumber(runDiamondsEarned)}</Text>
+              <Text style={[styles.scrappedText, { color: '#00FFFF', fontSize: getBtnDynSize(scrappedGemStr.length, 16) }]} numberOfLines={1}>{scrappedGemStr}</Text>
             ) : (
-              <Text style={styles.scrappedText}>Scrapped 25% of earnings: +${formatNumber(consolationPrize)}</Text>
+              <Text style={[styles.scrappedText, { fontSize: getBtnDynSize(scrappedCashStr.length, 16) }]} numberOfLines={1}>{scrappedCashStr}</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>RETRY</Text></TouchableOpacity>
@@ -173,6 +190,7 @@ export default function GameUI({
         )}
       </View>
 
+      {/* שאר המודאלים ללא שינוי, נוסף להם numberOfLines לבטיחות */}
       {introStep !== null && introStep < 3 && gameState === 'START' && (
         <View style={styles.introOverlay}>
           <View style={styles.introCard}>
@@ -198,7 +216,7 @@ export default function GameUI({
       {showPrestigeConfirm && prestigeOffer && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderColor: '#FF3B30', padding: 25 }]}>
-            <Text style={styles.modalTitle}>CRITICAL WARNING</Text>
+            <Text style={styles.modalTitle} numberOfLines={1}>CRITICAL WARNING</Text>
             <Text style={styles.modalText}>This will permanently BURN your entire bank balance (${formatNumber(bank)}).</Text>
             <Text style={styles.modalSubText}>Proceed to unlock x{prestigeOffer.mult} multiplier?</Text>
             <View style={{ width: '100%', gap: 15, marginTop: 20 }}>
@@ -213,23 +231,40 @@ export default function GameUI({
         </View>
       )}
 
+      {gameState === 'FIREWALL_MODAL' && (
+        <View style={styles.introOverlay}>
+          <View style={[styles.introCard, { borderColor: '#FFCC00' }]}>
+            <Text style={[styles.introTitle, { color: '#FFCC00' }]} numberOfLines={1}>🔥 FIREWALL BREACH 🔥</Text>
+            <Text style={styles.introText}>You hit the golden vault! The zone is shrinking and rotating extremely fast. Choose your payload before you begin:</Text>
+            <View style={{ width: '100%', gap: 12, marginTop: 10 }}>
+              <TouchableOpacity onPress={() => startFirewallFromModal('diamond')} style={[styles.introButton, { backgroundColor: '#00FFFF' }]}>
+                <Text style={[styles.introButtonText, { color: '#000' }]} numberOfLines={1}>💎 EXTRACT GEMS (3/HIT)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => startFirewallFromModal('cash')} style={[styles.introButton, { backgroundColor: '#00FF66' }]}>
+                <Text style={[styles.introButtonText, { color: '#000' }]} numberOfLines={1}>💵 CASH (x4 MULTIPLIER)</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {rankUpModal && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 25 }]}>
-            <Text style={[styles.modalTitle, { color: '#00FF66' }]}>RANK UP!</Text>
+            <Text style={[styles.modalTitle, { color: '#00FF66' }]} numberOfLines={1}>RANK UP!</Text>
             <Text style={styles.modalText}>Your new hacker title is:</Text>
-            <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 10, textAlign: 'center' }}>{rankUpModal.rank}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 10, textAlign: 'center' }} numberOfLines={1}>{rankUpModal.rank}</Text>
             
             {(rankUpModal.cashReward > 0 || rankUpModal.diamondReward > 0) && (
               <View style={{ backgroundColor: 'rgba(0,255,102,0.1)', padding: 12, borderRadius: 10, marginBottom: 20, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#00FF66' }}>
                 <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold', marginBottom: 5 }}>PROMOTION BONUS</Text>
                 {rankUpModal.cashReward > 0 && (
-                  <Text style={{ color: '#00FF66', fontSize: 20, fontWeight: '900' }}>
+                  <Text style={{ color: '#00FF66', fontSize: 20, fontWeight: '900' }} numberOfLines={1}>
                     +${formatNumber(rankUpModal.cashReward)}
                   </Text>
                 )}
                 {rankUpModal.diamondReward > 0 && (
-                  <Text style={{ color: '#00FFFF', fontSize: 20, fontWeight: '900' }}>
+                  <Text style={{ color: '#00FFFF', fontSize: 20, fontWeight: '900' }} numberOfLines={1}>
                     +💎 {formatNumber(rankUpModal.diamondReward)}
                   </Text>
                 )}
@@ -248,44 +283,42 @@ export default function GameUI({
 
 const styles = StyleSheet.create({
   uiContainer: { position: 'absolute', bottom: 50, alignItems: 'center', width: '100%', zIndex: 20 },
-  actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
+  actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5, backgroundColor: 'transparent' },
   
-  rankText: { color: '#00FF66', fontSize: 13, fontWeight: 'bold', marginBottom: 15, letterSpacing: 1 },
+  rankText: { color: '#00FF66', fontSize: 13, fontWeight: 'bold', marginBottom: 15, letterSpacing: 1, backgroundColor: 'transparent' },
   prestigeButton: { backgroundColor: 'rgba(255,0,0,0.1)', borderWidth: 1, borderColor: '#FF3B30', padding: 12, borderRadius: 15, marginBottom: 15, alignItems: 'center', width: '85%' },
-  prestigeTitle: { color: '#FF3B30', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  prestigeTitle: { color: '#FF3B30', fontSize: 16, fontWeight: '900', letterSpacing: 1, backgroundColor: 'transparent' },
   prestigeDesc: { color: '#FFF', fontSize: 11, textAlign: 'center', marginTop: 4 },
   firewallAlert: { backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: '#FF6600', padding: 10, borderRadius: 12, marginBottom: 15, width: '85%', alignItems: 'center' },
   firewallAlertText: { color: '#FF6600', fontWeight: '900', fontSize: 14 },
   firewallAlertSub: { color: '#FFF', fontSize: 10, marginTop: 2 },
   
-  mainNextUnlockText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', marginBottom: 20, letterSpacing: 1, textTransform: 'uppercase' },
+  mainNextUnlockText: { color: '#FFCC00', fontWeight: 'bold', marginBottom: 20, letterSpacing: 1, textTransform: 'uppercase', backgroundColor: 'transparent' },
   menuRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 16 },
   menuButton: { backgroundColor: 'transparent', borderWidth: 1, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', position: 'relative' },
   menuButtonText: { color: '#FFCC00', fontWeight: 'bold', fontSize: 13, letterSpacing: 1 },
   badge: { position: 'absolute', top: -6, right: -6, backgroundColor: '#FF3B30', minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  
   riskContainer: { alignItems: 'center', backgroundColor: 'rgba(5, 5, 5, 0.95)', padding: 25, borderRadius: 20, width: '90%', borderWidth: 1, borderColor: '#333' },
-  riskTitle: { fontSize: 35, color: '#FFCC00', fontWeight: '900', letterSpacing: 2 },
+  riskTitle: { fontSize: 35, color: '#FFCC00', fontWeight: '900', letterSpacing: 2, backgroundColor: 'transparent' },
   riskSubtitle: { fontSize: 16, color: '#FFF', marginBottom: 16, letterSpacing: 1 },
   riskTutorialBox: { backgroundColor: 'rgba(255,204,0,0.1)', borderWidth: 1, borderColor: '#FFCC00', borderRadius: 12, padding: 14, marginBottom: 16, width: '100%' },
   riskTutorialText: { color: '#FFF', fontSize: 13, textAlign: 'center', marginBottom: 10 },
   riskTutorialBtn: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 20, backgroundColor: '#FFCC00', borderRadius: 16 },
   riskTutorialBtnText: { color: '#000', fontWeight: '900', fontSize: 12 },
   
-  // הוסרה תכונת הכיווץ, הוגדר פונט יציב (16) ורקע שקוף למניעת הריבוע
   cashOutButton: { backgroundColor: '#00FF66', paddingVertical: 15, paddingHorizontal: 15, width: '100%', borderRadius: 30, alignItems: 'center', marginBottom: 15 },
-  cashOutText: { color: '#0A0A0A', fontSize: 16, fontWeight: '900', width: '100%', textAlign: 'center', backgroundColor: 'transparent' },
+  cashOutText: { color: '#0A0A0A', fontWeight: '900', width: '100%', textAlign: 'center', backgroundColor: 'transparent' },
   riskItButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', paddingVertical: 15, paddingHorizontal: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
-  riskItText: { color: '#FF3B30', fontSize: 16, fontWeight: '900', width: '100%', textAlign: 'center', backgroundColor: 'transparent' },
+  riskItText: { color: '#FF3B30', fontWeight: '900', width: '100%', textAlign: 'center', backgroundColor: 'transparent' },
   
   gameOverContainer: { alignItems: 'center', width: '100%' },
-  gameOverText: { fontSize: 30, color: '#FF3B30', fontWeight: '900', letterSpacing: 3, textAlign: 'center' },
-  successText: { fontSize: 30, color: '#00FF66', fontWeight: '900', letterSpacing: 2, textAlign: 'center' },
-  
-  // תיקונים זהים גם כאן למען הביטחון
-  scrappedText: { fontSize: 16, color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 10, backgroundColor: 'transparent' },
-  runStatsText: { color: '#AAA', fontSize: 13, marginBottom: 16, textAlign: 'center' },
-  finalScoreText: { fontSize: 18, marginTop: 5, marginBottom: 8, paddingHorizontal: 10, textAlign: 'center', backgroundColor: 'transparent' },
+  gameOverText: { fontSize: 30, color: '#FF3B30', fontWeight: '900', letterSpacing: 3, textAlign: 'center', backgroundColor: 'transparent' },
+  successText: { fontSize: 30, color: '#00FF66', fontWeight: '900', letterSpacing: 2, textAlign: 'center', backgroundColor: 'transparent' },
+  scrappedText: { color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 10, backgroundColor: 'transparent' },
+  runStatsText: { color: '#AAA', marginBottom: 16, textAlign: 'center', backgroundColor: 'transparent' },
+  finalScoreText: { marginTop: 5, marginBottom: 8, paddingHorizontal: 10, textAlign: 'center', backgroundColor: 'transparent' },
   
   retryButton: { backgroundColor: '#007AFF', paddingVertical: 15, borderRadius: 30, width: 180, alignItems: 'center' },
   retryButtonText: { color: '#FFF', fontSize: 18, fontWeight: '900' },
@@ -293,23 +326,25 @@ const styles = StyleSheet.create({
   shareButtonText: { color: '#0A0A0A', fontSize: 16, fontWeight: '900' },
   secondaryActionButton: { backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#444', paddingVertical: 12, borderRadius: 30, width: 180, alignItems: 'center', marginTop: 12 },
   secondaryActionText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  
   tutorialContainer: { alignItems: 'center', backgroundColor: 'rgba(0, 255, 255, 0.1)', padding: 20, borderRadius: 20, borderWidth: 2, borderColor: '#00FFFF', width: '85%' },
   tutorialTitle: { fontSize: 18, color: '#00FFFF', fontWeight: '900', marginBottom: 10, textAlign: 'center' },
   tutorialText: { color: '#FFF', fontSize: 14, textAlign: 'center', marginBottom: 20 },
   tutorialTap: { color: '#FFCC00', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
+  
   introOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', zIndex: 200, padding: 24 },
   introCard: { width: '100%', maxWidth: 340, backgroundColor: '#111', borderWidth: 2, borderColor: '#00FF66', borderRadius: 20, padding: 24, alignItems: 'center' },
-  introTitle: { fontSize: 20, color: '#00FF66', fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: 1 },
+  introTitle: { fontSize: 20, color: '#00FF66', fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: 1, backgroundColor: 'transparent' },
   introText: { color: '#FFF', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 16 },
   introProgress: { color: '#666', fontSize: 12, fontWeight: 'bold', marginBottom: 16 },
   introButton: { backgroundColor: '#00FF66', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 28, width: '100%', alignItems: 'center' },
-  introButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16 },
+  introButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16, backgroundColor: 'transparent' },
   introSkip: { marginTop: 14 },
   introSkipText: { color: '#666', fontSize: 14, fontWeight: 'bold' },
   
   modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   modalContent: { width: '80%', backgroundColor: '#111', borderWidth: 2, borderColor: '#FF3B30', padding: 25, borderRadius: 20, alignItems: 'center' },
-  modalTitle: { fontSize: 24, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10, textAlign: 'center' },
+  modalTitle: { fontSize: 24, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10, textAlign: 'center', backgroundColor: 'transparent' },
   modalText: { color: '#FFF', fontSize: 16, textAlign: 'center', marginBottom: 5 },
   modalSubText: { color: '#666', fontSize: 14, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
   dangerButton: { backgroundColor: '#FF3B30', paddingVertical: 15, borderRadius: 30, width: '100%', alignItems: 'center' },
