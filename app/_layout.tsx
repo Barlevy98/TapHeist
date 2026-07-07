@@ -5,7 +5,6 @@ import mobileAds from 'react-native-google-mobile-ads';
 
 export default function RootLayout() {
   useEffect(() => {
-    // אתחול רשמי של מערכת הפרסומות של גוגל ברגע שהמשחק נפתח
     mobileAds()
       .initialize()
       .then(adapterStatuses => {
@@ -16,7 +15,8 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }} />
+      {/* הוספת contentStyle עם רקע שחור שמונעת מהחלון הלבן של המכשיר לבצבץ */}
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#050505' } }} />
     </>
   );
 }
