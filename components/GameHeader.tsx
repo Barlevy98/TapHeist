@@ -10,11 +10,12 @@ const DiamondSvg = ({ color, size = 16, isBlack = false }: { color: string, size
   </Svg>
 );
 
-// הפונקציה שמחשבת את הגודל מראש ומונעת את הריבוע הלבן!
-const getDynSize = (textLength: number, baseSize: number) => {
-  if (textLength > 18) return Math.floor(baseSize * 0.55);
-  if (textLength > 14) return Math.floor(baseSize * 0.70);
-  if (textLength > 10) return Math.floor(baseSize * 0.85);
+// פונקציית הקסם - מכווצת את הפונט מראש לפי כמות הספרות כדי למנוע את באג הריבוע!
+const getDynSize = (text: string | number, baseSize: number) => {
+  const len = String(text).length;
+  if (len > 18) return Math.floor(baseSize * 0.55);
+  if (len > 14) return Math.floor(baseSize * 0.70);
+  if (len > 10) return Math.floor(baseSize * 0.85);
   return baseSize;
 };
 
@@ -46,7 +47,7 @@ export default function GameHeader({
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
 
-  // הכנת המחרוזות כדי למדוד את האורך שלהן
+  // הכנת המחרוזות לבדיקת אורך
   const bankStr = `$${formatNumber(bank)}`;
   const diamondsStr = ` ${formatNumber(diamonds)}`;
   const scoreStr = `$${formatNumber(score)}`;
@@ -59,17 +60,17 @@ export default function GameHeader({
     <>
       <View style={styles.header} pointerEvents="box-none">
         
-        {/* צד שמאל - בנק */}
+        {/* אזור הבנק */}
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
-          <Text style={[styles.bankText, { fontSize: getDynSize(bankStr.length, 20) }]} numberOfLines={1}>{bankStr}</Text>
+          <Text style={[styles.bankText, { fontSize: getDynSize(bankStr, 20) }]} numberOfLines={1}>{bankStr}</Text>
           <View style={styles.diamondRow}>
              <DiamondSvg color="#00FFFF" size={12} />
-             <Text style={[styles.diamondText, { fontSize: getDynSize(diamondsStr.length, 16) }]} numberOfLines={1}>{diamondsStr}</Text>
+             <Text style={[styles.diamondText, { fontSize: getDynSize(diamondsStr, 16) }]} numberOfLines={1}>{diamondsStr}</Text>
           </View>
         </View>
 
-        {/* צד ימין - ניקוד ומכפיל */}
+        {/* אזור ניקוד ומכפיל */}
         {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
           <View style={styles.scoreContainer}>
             
@@ -77,21 +78,21 @@ export default function GameHeader({
               {activeWorld.id === 'diamond_world' ? (
                 <>
                   <DiamondSvg color={activeWorld.textPrimary} size={22} />
-                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, fontSize: getDynSize(diamondScoreStr.length, 28) }]} numberOfLines={1}>{diamondScoreStr}</Text>
+                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, fontSize: getDynSize(diamondScoreStr, 28) }]} numberOfLines={1}>{diamondScoreStr}</Text>
                 </>
               ) : (
-                <Text style={[styles.scoreText, { color: activeSkin.color, fontSize: getDynSize(scoreStr.length, 28) }]} numberOfLines={1}>{scoreStr}</Text>
+                <Text style={[styles.scoreText, { color: activeSkin.color, fontSize: getDynSize(scoreStr, 28) }]} numberOfLines={1}>{scoreStr}</Text>
               )}
             </View>
             
             {multiplier > 1 ? (
-              <Text style={[styles.multiplierText, { opacity: 1, fontSize: getDynSize(multStr.length, 12) }]} numberOfLines={1}>{multStr}</Text>
+              <Text style={[styles.multiplierText, { opacity: 1, fontSize: getDynSize(multStr, 12) }]} numberOfLines={1}>{multStr}</Text>
             ) : (
               <Text style={[styles.multiplierText, { opacity: 0, fontSize: 12 }]} numberOfLines={1}>x1 MULTIPLIER</Text>
             )}
 
             <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
-              <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? (isBlack ? '#FFF' : displayColor) : activeSkin.color, fontSize: getDynSize(lastRewardStr.length, 20) }]} numberOfLines={1}>
+              <Text style={[styles.floatingScoreText, { color: isDiamondTarget ? (isBlack ? '#FFF' : displayColor) : activeSkin.color, fontSize: getDynSize(lastRewardStr, 20) }]} numberOfLines={1}>
                 {lastRewardStr}
               </Text>
               {isDiamondTarget && (
@@ -105,7 +106,7 @@ export default function GameHeader({
         )}
       </View>
 
-      {/* --- אלמנטים נוספים --- */}
+      {/* אזור בוסטים */}
       {gameState === 'PLAYING' && (
         <View style={styles.activeBoostsHud}>
           {isShieldActive && (
@@ -134,10 +135,11 @@ export default function GameHeader({
         </View>
       )}
 
+      {/* אזור קומבו */}
       {(gameState === 'PLAYING' || gameState === 'RISK') && combo > 0 && (
         <View style={styles.comboHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={[styles.comboText, { color: activeSkin.color, fontSize: getDynSize(comboStr.length, 28) }]} numberOfLines={1}>{comboStr}</Text>
+            <Text style={[styles.comboText, { color: activeSkin.color, fontSize: getDynSize(comboStr, 28) }]} numberOfLines={1}>{comboStr}</Text>
           </View>
           {gameState === 'PLAYING' && isDirectionWarning && !isFirewallActive && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
           {gameState === 'PLAYING' && isFirewallActive && <Text style={[styles.warningText, { color: '#FF3B30', fontSize: 16 }]}>🚨 DANGER ZONE: FIREWALL 🚨</Text>}
@@ -150,17 +152,22 @@ export default function GameHeader({
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', top: 20, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, zIndex: 10 },
+  
   bankContainer: { alignItems: 'flex-start', flex: 1, paddingRight: 10 },
   bankLabel: { fontSize: 12, fontWeight: 'bold', letterSpacing: 2 },
   bankText: { color: '#00FF66', fontWeight: '900', backgroundColor: 'transparent', textAlign: 'left' },
   diamondRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   diamondText: { color: '#00FFFF', fontWeight: 'bold', backgroundColor: 'transparent', textAlign: 'left' },
+  
   scoreContainer: { flex: 1, paddingLeft: 10, justifyContent: 'flex-start' },
   diamondRowRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: '100%' },
+  
   scoreText: { fontWeight: '900', textAlign: 'right', backgroundColor: 'transparent', width: '100%' },
   multiplierText: { color: '#FFCC00', fontWeight: 'bold', letterSpacing: 1, marginTop: -2, backgroundColor: 'transparent', width: '100%', textAlign: 'right' },
+  
   floatingScoreContainer: { position: 'absolute', right: 0, top: -25, flexDirection: 'row', alignItems: 'center' },
   floatingScoreText: { fontWeight: '900', backgroundColor: 'transparent' },
+  
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
   comboHeader: { position: 'absolute', top: 100, width: '100%', alignItems: 'center', zIndex: 10 },
