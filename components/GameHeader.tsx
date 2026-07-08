@@ -4,13 +4,6 @@ import Animated from 'react-native-reanimated';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { formatNumber } from '../gameHelpers'; 
 
-// פונקציית כיווץ ידנית - מונעת לחלוטין את הריבועים של iOS
-const getDynFontSize = (textLength: number, baseSize: number) => {
-  if (textLength >= 15) return Math.floor(baseSize * 0.6);
-  if (textLength >= 11) return Math.floor(baseSize * 0.8);
-  return baseSize;
-};
-
 const DiamondSvg = ({ color, size = 18 }: { color: string, size?: number }) => (
   <Svg viewBox="0 0 24 24" width={size} height={size}>
     <Path d="M 5 5 L 19 5 L 24 11 L 12 23 L 0 11 Z" fill={color} />
@@ -43,22 +36,15 @@ export default function GameHeader({
 
   const displayColor = currentRewardTier?.color || '#00FFFF';
 
-  const bankStr = `$${formatNumber(bank)}`;
-  const diamondsStr = ` ${formatNumber(diamonds)}`;
-  const scoreStr = `$${formatNumber(score)}`;
-  const diamondScoreStr = ` ${formatNumber(runDiamondsEarned)}`;
-  const multStr = `x${formatNumber(multiplier)} MULTIPLIER`;
-  const comboStr = `${combo} COMBO`;
-
   return (
     <>
       <View style={styles.header} pointerEvents="box-none">
         <View style={styles.bankContainer}>
           <Text style={[styles.bankLabel, { color: activeWorld.textSecondary }]}>BANK</Text>
-          <Text style={[styles.bankText, { fontSize: getDynFontSize(bankStr.length, 24) }]} numberOfLines={1}>{bankStr}</Text>
+          <Text style={styles.bankText} numberOfLines={1}>${formatNumber(bank)}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-             <DiamondSvg color="#00FFFF" size={14} />
-             <Text style={[styles.diamondText, { fontSize: getDynFontSize(diamondsStr.length, 18) }]} numberOfLines={1}>{diamondsStr}</Text>
+             <DiamondSvg color="#00FFFF" size={12} />
+             <Text style={styles.diamondText} numberOfLines={1}> {formatNumber(diamonds)}</Text>
           </View>
         </View>
 
@@ -67,11 +53,11 @@ export default function GameHeader({
             <View>
               {activeWorld.id === 'diamond_world' ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                  <DiamondSvg color={activeWorld.textPrimary} size={28} />
-                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color, fontSize: getDynFontSize(diamondScoreStr.length, 32) }]} numberOfLines={1}>{diamondScoreStr}</Text>
+                  <DiamondSvg color={activeWorld.textPrimary} size={22} />
+                  <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]} numberOfLines={1}> {formatNumber(runDiamondsEarned)}</Text>
                 </View>
               ) : (
-                <Text style={[styles.scoreText, { color: activeSkin.color, fontSize: getDynFontSize(scoreStr.length, 32) }]} numberOfLines={1}>{scoreStr}</Text>
+                <Text style={[styles.scoreText, { color: activeWorld.textPrimary, textShadowColor: activeSkin.color }]} numberOfLines={1}>${formatNumber(score)}</Text>
               )}
               
               <Animated.View style={[styles.floatingScoreContainer, floatingScoreStyle]}>
@@ -80,13 +66,13 @@ export default function GameHeader({
                 </Text>
                 {isDiamondTarget && (
                   <View style={{ marginLeft: 3 }}>
-                    <DiamondSvg color={displayColor} size={18} />
+                    <DiamondSvg color={displayColor} size={16} />
                   </View>
                 )}
               </Animated.View>
 
             </View>
-            {multiplier > 1 && <Text style={[styles.multiplierText, { fontSize: getDynFontSize(multStr.length, 14) }]} numberOfLines={1}>{multStr}</Text>}
+            {multiplier > 1 && <Text style={styles.multiplierText} numberOfLines={1}>x{formatNumber(multiplier)} MULTIPLIER</Text>}
           </View>
         )}
       </View>
@@ -122,7 +108,7 @@ export default function GameHeader({
       {(gameState === 'PLAYING' || gameState === 'RISK') && combo > 0 && (
         <View style={styles.comboHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={[styles.comboText, { color: activeSkin.color, fontSize: getDynFontSize(comboStr.length, 28) }]} numberOfLines={1}>{comboStr}</Text>
+            <Text style={[styles.comboText, { color: activeSkin.color }]} numberOfLines={1}>{combo} COMBO</Text>
           </View>
           {gameState === 'PLAYING' && isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
           {gameState === 'PLAYING' && nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
@@ -134,25 +120,23 @@ export default function GameHeader({
 
 const styles = StyleSheet.create({
   header: { position: 'absolute', top: 20, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 30, zIndex: 10 },
-  bankContainer: { alignItems: 'flex-start', flex: 1, paddingRight: 10 },
-  bankLabel: { fontSize: 14, fontWeight: 'bold', letterSpacing: 2 },
+  bankContainer: { alignItems: 'flex-start', flexShrink: 1, paddingRight: 10 },
+  bankLabel: { fontSize: 12, fontWeight: 'bold', letterSpacing: 2 },
   
-  // נעילת הגובה שמונעת קפיצות 
-  bankText: { color: '#00FF66', fontWeight: '900', height: 32, lineHeight: 32 },
-  diamondText: { color: '#00FFFF', fontWeight: 'bold', height: 26, lineHeight: 26 },
+  // פונטים מוקטנים קבועים - בלי קפיצות ובלי ריבועים
+  bankText: { color: '#00FF66', fontSize: 16, fontWeight: '900' }, 
+  diamondText: { color: '#00FFFF', fontSize: 14, fontWeight: 'bold' }, 
   
-  scoreContainer: { alignItems: 'flex-end', flex: 1, paddingLeft: 10 },
-  
-  // נעילת הגובה למספרים הגדולים
-  scoreText: { fontWeight: '900', textAlign: 'right', height: 42, lineHeight: 42 },
-  floatingScoreContainer: { position: 'absolute', right: 0, top: -30, flexDirection: 'row', alignItems: 'center', height: 32 },
-  floatingScoreText: { fontSize: 24, fontWeight: '900' },
-  multiplierText: { color: '#FFCC00', fontWeight: 'bold', letterSpacing: 1, marginTop: -5, height: 20, lineHeight: 20 },
+  scoreContainer: { alignItems: 'flex-end', flexShrink: 1, paddingLeft: 10 },
+  scoreText: { fontSize: 24, fontWeight: '900', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 }, 
+  floatingScoreContainer: { position: 'absolute', right: 0, top: -30, flexDirection: 'row', alignItems: 'center' },
+  floatingScoreText: { fontSize: 18, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 5 }, 
+  multiplierText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginTop: -5 }, 
   
   activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
   comboHeader: { position: 'absolute', top: 100, width: '100%', alignItems: 'center', zIndex: 10 },
-  comboText: { fontWeight: '900', letterSpacing: 3, opacity: 0.8, height: 40, lineHeight: 40 },
+  comboText: { fontSize: 22, fontWeight: '900', letterSpacing: 3, opacity: 0.8 }, 
   warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1 },
   nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2 },
 });

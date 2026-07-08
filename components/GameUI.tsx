@@ -4,20 +4,6 @@ import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { CORE_TUTORIAL_STEPS, formatNumber } from '../gameHelpers';
 
-// כיווץ ידני לכפתורים
-const getBtnDynSize = (textLength: number, baseSize: number) => {
-  if (textLength >= 22) return Math.floor(baseSize * 0.7);
-  if (textLength >= 17) return Math.floor(baseSize * 0.85);
-  return baseSize;
-};
-
-// כיווץ ידני לטקסטים ארוכים במיוחד
-const getStatsDynSize = (textLength: number, baseSize: number) => {
-  if (textLength >= 50) return Math.floor(baseSize * 0.75);
-  if (textLength >= 40) return Math.floor(baseSize * 0.85);
-  return baseSize;
-};
-
 export default function GameUI({
   gameState,
   setGameState,
@@ -56,17 +42,9 @@ export default function GameUI({
 
   const [showPrestigeConfirm, setShowPrestigeConfirm] = useState(false);
 
-  const cashOutStr = `CASH OUT ($${formatNumber(score)})`;
-  const riskItStr = `RISK IT (x${formatNumber(multiplier * 2)})`;
-  const runStatsStr = `Run: ${runMaxCombo} combo · x${formatNumber(multiplier)} peak · 💎 ${runDiamondsEarned} this heist`;
-  const finalCashStr = `Transferred $${formatNumber(score)} to Bank`;
-  const finalGemStr = `Secured 💎 ${formatNumber(runDiamondsEarned)} to Vault`;
-  const scrappedCashStr = `Scrapped 25% of earnings: +$${formatNumber(consolationPrize)}`;
-  const scrappedGemStr = `Kept 100% of mined gems: 💎 ${formatNumber(runDiamondsEarned)}`;
-
   const renderRunStats = () => (
-    <Text style={[styles.runStatsText, { fontSize: getStatsDynSize(runStatsStr.length, 13) }]} numberOfLines={1}>
-      {runStatsStr}
+    <Text style={styles.runStatsText} numberOfLines={1}>
+      Run: {runMaxCombo} combo · x{formatNumber(multiplier)} peak · 💎 {runDiamondsEarned} this heist
     </Text>
   );
 
@@ -147,10 +125,10 @@ export default function GameUI({
             )}
             
             <TouchableOpacity onPress={handleCashOut} style={styles.cashOutButton}>
-              <Text style={[styles.cashOutText, { fontSize: getBtnDynSize(cashOutStr.length, 18) }]} numberOfLines={1}>{cashOutStr}</Text>
+              <Text style={styles.cashOutText} numberOfLines={1}>CASH OUT (${formatNumber(score)})</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleRiskIt} style={styles.riskItButton}>
-              <Text style={[styles.riskItText, { fontSize: getBtnDynSize(riskItStr.length, 18) }]} numberOfLines={1}>{riskItStr}</Text>
+              <Text style={styles.riskItText} numberOfLines={1}>RISK IT (x{formatNumber(multiplier * 2)})</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -168,9 +146,9 @@ export default function GameUI({
           <Animated.View style={[styles.gameOverContainer, successPulseStyle]}>
             <Text style={styles.successText}>HACK SUCCESSFUL</Text>
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary, fontSize: getStatsDynSize(finalGemStr.length, 18) }]} numberOfLines={1}>{finalGemStr}</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]} numberOfLines={1}>Secured 💎 {formatNumber(runDiamondsEarned)} to Vault</Text>
             ) : (
-              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary, fontSize: getStatsDynSize(finalCashStr.length, 18) }]} numberOfLines={1}>{finalCashStr}</Text>
+              <Text style={[styles.finalScoreText, { color: activeWorld.textPrimary }]} numberOfLines={1}>Transferred ${formatNumber(score)} to Bank</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>NEXT HEIST</Text></TouchableOpacity>
@@ -184,9 +162,9 @@ export default function GameUI({
           <View style={styles.gameOverContainer}>
             <Text style={styles.gameOverText}>SYSTEM LOCKED</Text>
             {activeWorld.id === 'diamond_world' ? (
-              <Text style={[styles.scrappedText, { color: '#00FFFF', fontSize: getStatsDynSize(scrappedGemStr.length, 16) }]} numberOfLines={1}>{scrappedGemStr}</Text>
+              <Text style={[styles.scrappedText, { color: '#00FFFF' }]} numberOfLines={1}>Kept 100% of mined gems: 💎 {formatNumber(runDiamondsEarned)}</Text>
             ) : (
-              <Text style={[styles.scrappedText, { fontSize: getStatsDynSize(scrappedCashStr.length, 16) }]} numberOfLines={1}>{scrappedCashStr}</Text>
+              <Text style={styles.scrappedText} numberOfLines={1}>Scrapped 25% of earnings: +${formatNumber(consolationPrize)}</Text>
             )}
             {renderRunStats()}
             <TouchableOpacity onPress={startGame} style={styles.retryButton}><Text style={styles.retryButtonText}>RETRY</Text></TouchableOpacity>
@@ -241,18 +219,18 @@ export default function GameUI({
           <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 25 }]}>
             <Text style={[styles.modalTitle, { color: '#00FF66' }]}>RANK UP!</Text>
             <Text style={styles.modalText}>Your new hacker title is:</Text>
-            <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 10, textAlign: 'center' }} numberOfLines={1}>{rankUpModal.rank}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: '#00FFFF', marginVertical: 10, textAlign: 'center' }}>{rankUpModal.rank}</Text>
             
             {(rankUpModal.cashReward > 0 || rankUpModal.diamondReward > 0) && (
               <View style={{ backgroundColor: 'rgba(0,255,102,0.1)', padding: 12, borderRadius: 10, marginBottom: 20, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#00FF66' }}>
                 <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold', marginBottom: 5 }}>PROMOTION BONUS</Text>
                 {rankUpModal.cashReward > 0 && (
-                  <Text style={{ color: '#00FF66', fontSize: 20, fontWeight: '900' }} numberOfLines={1}>
+                  <Text style={{ color: '#00FF66', fontSize: 20, fontWeight: '900' }}>
                     +${formatNumber(rankUpModal.cashReward)}
                   </Text>
                 )}
                 {rankUpModal.diamondReward > 0 && (
-                  <Text style={{ color: '#00FFFF', fontSize: 20, fontWeight: '900' }} numberOfLines={1}>
+                  <Text style={{ color: '#00FFFF', fontSize: 20, fontWeight: '900' }}>
                     +💎 {formatNumber(rankUpModal.diamondReward)}
                   </Text>
                 )}
@@ -288,51 +266,54 @@ const styles = StyleSheet.create({
   badge: { position: 'absolute', top: -6, right: -6, backgroundColor: '#FF3B30', minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
   riskContainer: { alignItems: 'center', backgroundColor: 'rgba(5, 5, 5, 0.95)', padding: 25, borderRadius: 20, width: '90%', borderWidth: 1, borderColor: '#333' },
-  riskTitle: { fontSize: 35, color: '#FFCC00', fontWeight: '900', letterSpacing: 2 },
-  riskSubtitle: { fontSize: 16, color: '#FFF', marginBottom: 16, letterSpacing: 1 },
+  riskTitle: { fontSize: 30, color: '#FFCC00', fontWeight: '900', letterSpacing: 2 },
+  riskSubtitle: { fontSize: 14, color: '#FFF', marginBottom: 16, letterSpacing: 1 },
   riskTutorialBox: { backgroundColor: 'rgba(255,204,0,0.1)', borderWidth: 1, borderColor: '#FFCC00', borderRadius: 12, padding: 14, marginBottom: 16, width: '100%' },
-  riskTutorialText: { color: '#FFF', fontSize: 13, textAlign: 'center', marginBottom: 10 },
+  riskTutorialText: { color: '#FFF', fontSize: 12, textAlign: 'center', marginBottom: 10 },
   riskTutorialBtn: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 20, backgroundColor: '#FFCC00', borderRadius: 16 },
   riskTutorialBtnText: { color: '#000', fontWeight: '900', fontSize: 12 },
   
-  // נעילת הגובה של כפתורי Risk It מונעת קפיצות
+  // פונטים מוקטנים קבועים - בלי קפיצות
   cashOutButton: { backgroundColor: '#00FF66', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center', marginBottom: 15 },
-  cashOutText: { color: '#0A0A0A', fontWeight: '900', height: 24, lineHeight: 24 },
+  cashOutText: { color: '#0A0A0A', fontSize: 14, fontWeight: '900' },
   riskItButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
-  riskItText: { color: '#FF3B30', fontWeight: '900', height: 24, lineHeight: 24 },
+  riskItText: { color: '#FF3B30', fontSize: 14, fontWeight: '900' },
   
   gameOverContainer: { alignItems: 'center', width: '100%' },
-  gameOverText: { fontSize: 30, color: '#FF3B30', fontWeight: '900', letterSpacing: 3, textAlign: 'center' },
-  successText: { fontSize: 30, color: '#00FF66', fontWeight: '900', letterSpacing: 2, textAlign: 'center' },
-  scrappedText: { color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold', textAlign: 'center', height: 20, lineHeight: 20 },
-  runStatsText: { color: '#AAA', marginBottom: 16, textAlign: 'center', height: 18, lineHeight: 18 },
-  finalScoreText: { marginTop: 5, marginBottom: 8, height: 24, lineHeight: 24 },
+  gameOverText: { fontSize: 26, color: '#FF3B30', fontWeight: '900', letterSpacing: 3, textAlign: 'center' },
+  successText: { fontSize: 26, color: '#00FF66', fontWeight: '900', letterSpacing: 2, textAlign: 'center' },
+  scrappedText: { fontSize: 13, color: '#FFCC00', marginTop: 5, marginBottom: 8, fontWeight: 'bold', textAlign: 'center' },
+  runStatsText: { color: '#AAA', fontSize: 11, marginBottom: 16, textAlign: 'center' },
+  finalScoreText: { fontSize: 14, marginTop: 5, marginBottom: 8 },
   retryButton: { backgroundColor: '#007AFF', paddingVertical: 15, borderRadius: 30, width: 180, alignItems: 'center' },
-  retryButtonText: { color: '#FFF', fontSize: 18, fontWeight: '900' },
+  retryButtonText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
   shareButton: { backgroundColor: '#FFCC00', paddingVertical: 12, borderRadius: 30, width: 180, alignItems: 'center', marginTop: 12 },
-  shareButtonText: { color: '#0A0A0A', fontSize: 16, fontWeight: '900' },
+  shareButtonText: { color: '#0A0A0A', fontSize: 15, fontWeight: '900' },
   secondaryActionButton: { backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#444', paddingVertical: 12, borderRadius: 30, width: 180, alignItems: 'center', marginTop: 12 },
-  secondaryActionText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  secondaryActionText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
+  
   tutorialContainer: { alignItems: 'center', backgroundColor: 'rgba(0, 255, 255, 0.1)', padding: 20, borderRadius: 20, borderWidth: 2, borderColor: '#00FFFF', width: '85%' },
-  tutorialTitle: { fontSize: 18, color: '#00FFFF', fontWeight: '900', marginBottom: 10, textAlign: 'center' },
-  tutorialText: { color: '#FFF', fontSize: 14, textAlign: 'center', marginBottom: 20 },
-  tutorialTap: { color: '#FFCC00', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
+  tutorialTitle: { fontSize: 16, color: '#00FFFF', fontWeight: '900', marginBottom: 10, textAlign: 'center' },
+  tutorialText: { color: '#FFF', fontSize: 13, textAlign: 'center', marginBottom: 20 },
+  tutorialTap: { color: '#FFCC00', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 },
+  
   introOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', zIndex: 200, padding: 24 },
   introCard: { width: '100%', maxWidth: 340, backgroundColor: '#111', borderWidth: 2, borderColor: '#00FF66', borderRadius: 20, padding: 24, alignItems: 'center' },
-  introTitle: { fontSize: 20, color: '#00FF66', fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: 1 },
-  introText: { color: '#FFF', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 16 },
+  introTitle: { fontSize: 18, color: '#00FF66', fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: 1 },
+  introText: { color: '#FFF', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 16 },
   introProgress: { color: '#666', fontSize: 12, fontWeight: 'bold', marginBottom: 16 },
   introButton: { backgroundColor: '#00FF66', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 28, width: '100%', alignItems: 'center' },
-  introButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 16 },
+  introButtonText: { color: '#0A0A0A', fontWeight: '900', fontSize: 15 },
   introSkip: { marginTop: 14 },
-  introSkipText: { color: '#666', fontSize: 14, fontWeight: 'bold' },
+  introSkipText: { color: '#666', fontSize: 13, fontWeight: 'bold' },
+  
   modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   modalContent: { width: '80%', backgroundColor: '#111', borderWidth: 2, borderColor: '#FF3B30', padding: 25, borderRadius: 20, alignItems: 'center' },
-  modalTitle: { fontSize: 24, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10, textAlign: 'center' },
-  modalText: { color: '#FFF', fontSize: 16, textAlign: 'center', marginBottom: 5 },
-  modalSubText: { color: '#666', fontSize: 14, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
+  modalTitle: { fontSize: 22, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10, textAlign: 'center' },
+  modalText: { color: '#FFF', fontSize: 14, textAlign: 'center', marginBottom: 5 },
+  modalSubText: { color: '#666', fontSize: 13, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
   dangerButton: { backgroundColor: '#FF3B30', paddingVertical: 15, borderRadius: 30, width: '100%', alignItems: 'center' },
-  dangerButtonText: { color: '#FFF', fontWeight: '900', fontSize: 16 },
+  dangerButtonText: { color: '#FFF', fontWeight: '900', fontSize: 15 },
   safeButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#666', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
-  safeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  safeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
 });
