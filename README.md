@@ -3,12 +3,12 @@
 [![Download on the App Store](https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&releaseDate=1314835200)](https://apps.apple.com/il/app/tap-heist/id6771778269)
 
 ## Tap Heist Gameplay
-(<img width="200" alt="Image" src="https://github.com/user-attachments/assets/9c61870e-f80f-44d0-b829-4274de78a865" />
+<img width="200" alt="Image" src="https://github.com/user-attachments/assets/9c61870e-f80f-44d0-b829-4274de78a865" />
 <img width="200"  alt="Image" src="https://github.com/user-attachments/assets/01be32aa-306b-4da8-ab36-87fc016e6c35" />
 <img width="200"  alt="Image" src="https://github.com/user-attachments/assets/65cc904f-5272-4f8f-bdb1-ae2e1ce4c59a" />
 <img width="200"  alt="Image" src="https://github.com/user-attachments/assets/a5c111b8-93eb-4396-9d84-d774b9df97e5" />
 <img width="200"  alt="Image" src="https://github.com/user-attachments/assets/340c4bf0-702f-42e6-8de0-ff6ea98ed3e4" />
-<img width="200"  alt="Image" src="https://github.com/user-attachments/assets/0a26762d-7f29-4901-b2f1-acaf2df96583" />)
+<img width="200"  alt="Image" src="https://github.com/user-attachments/assets/0a26762d-7f29-4901-b2f1-acaf2df96583" />
 
 Tap Heist is a fast-paced idle tapping game built with React Native and Expo. Tap precisely through rotating vault rings, build combos, earn cash and diamonds, and spend your winnings on skins, worlds, and tactical power-ups.
 
