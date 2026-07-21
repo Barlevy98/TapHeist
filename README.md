@@ -1,5 +1,14 @@
 # Tap Heist
 
+[![Download on the App Store](https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83&releaseDate=1314835200)](https://apps.apple.com/il/app/tap-heist/id6771778269)
+
+![Tap Heist Gameplay](<img width="1028" height="2048" alt="Image" src="https://github.com/user-attachments/assets/9c61870e-f80f-44d0-b829-4274de78a865" />
+<img width="1014" height="2048" alt="Image" src="https://github.com/user-attachments/assets/01be32aa-306b-4da8-ab36-87fc016e6c35" />
+<img width="1014" height="2048" alt="Image" src="https://github.com/user-attachments/assets/65cc904f-5272-4f8f-bdb1-ae2e1ce4c59a" />
+<img width="1014" height="2048" alt="Image" src="https://github.com/user-attachments/assets/a5c111b8-93eb-4396-9d84-d774b9df97e5" />
+<img width="996" height="2048" alt="Image" src="https://github.com/user-attachments/assets/340c4bf0-702f-42e6-8de0-ff6ea98ed3e4" />
+<img width="1004" height="2048" alt="Image" src="https://github.com/user-attachments/assets/0a26762d-7f29-4901-b2f1-acaf2df96583" />)
+
 Tap Heist is a fast-paced idle tapping game built with React Native and Expo. Tap precisely through rotating vault rings, build combos, earn cash and diamonds, and spend your winnings on skins, worlds, and tactical power-ups.
 
 ## Overview
@@ -8,7 +17,7 @@ Tap Heist combines a simple tap mechanic with layered progression, cosmetics, an
 
 ## Current Release
 
-- Version 1.4 is live on the App Store.
+- Version 1.4.1 is live on the App Store.
 - The game includes a full progression loop with missions, weekly challenges, prestige offers, and a large cosmetics catalog.
 - The experience is designed around short, replayable runs with reward tiers, risk decisions, and special worlds.
 
@@ -54,21 +63,19 @@ Power-ups can be purchased with cash or diamonds, and some can also be earned fr
 - Reward tiers shift as combo grows, with special scaling for certain worlds.
 - The main UI shows bank balance, diamonds, current run score, combo, multiplier, and active boosts.
 
-## Tech Stack
+## Tech Stack & Technical Highlights
 
-- React Native 0.81.5
-- Expo 54
-- TypeScript 5.9
-- Expo Router
-- React Native Reanimated
-- Expo Secure Store
-- Expo Haptics
-- React Native SVG
-- Google Mobile Ads
+- **Framework:** React Native 0.81.5, Expo 54
+- **Language:** TypeScript 5.9
+- **Navigation:** Expo Router
+- **Animations & UI:** React Native Reanimated, React Native SVG
+- **Hardware Integration:** Expo Haptics
+- **Monetization:** Google Mobile Ads
 
-## Data Storage
+### Technical Challenges & Solutions
 
-Game progress is stored locally on the device so the game can preserve progress without requiring a server.
+- **High-Performance UI:** Implemented smooth, 60FPS animations using **React Native Reanimated** to ensure ultra-responsive gameplay during fast-paced tap events without dropping frames.
+- **Anti-Cheat Local Storage:** Designed a secure, serverless local storage architecture using **Expo Secure Store** to preserve player progression, bank balance, and cosmetics while protecting against data tampering.
 
 ## Installation
 
