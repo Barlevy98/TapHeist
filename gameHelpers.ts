@@ -37,8 +37,9 @@ export const STORAGE_KEYS = {
   prestigeMultiplier: 'stat_prestige_mult',
   gamesSinceFirewall: 'stat_games_firewall',
   
-  // --- V2.0 SKILLS ---
+  // --- V2.0 SKILLS & BOSSES ---
   playerSkills: 'vault_player_skills',
+  unlockedBosses: 'vault_unlocked_bosses',
 } as const;
 
 export function formatNumber(num: number): string {
