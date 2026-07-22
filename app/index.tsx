@@ -36,11 +36,11 @@ import {
   addPowerUp,
   getNextUnlock,
   incrementWeeklyHeists,
-  getPrestigeOffer,
   getHackerRank,
   getCumulativeRankRewards,
   formatNumber,
-  getRewardTier
+  getRewardTier,
+  getSkillBonus
 } from '../gameHelpers';
 
 const { width } = Dimensions.get('window');
@@ -113,7 +113,6 @@ export default function GameScreen() {
 
   const [lifetimeMaxCombo, setLifetimeMaxCombo] = useState(0);
   const [totalHeists, setTotalHeists] = useState(0);
-  const [prestigeMult, setPrestigeMult] = useState(1);
   const [gamesSinceFirewall, setGamesSinceFirewall] = useState(0);
   const [isFirewallActive, setIsFirewallActive] = useState(false);
 
@@ -123,9 +122,17 @@ export default function GameScreen() {
   const [startRank, setStartRank] = useState('SCRIPT KIDDIE');
   const [rankUpModal, setRankUpModal] = useState<any>(null);
 
+  // V2.0 Skills States
+  const [zoneBonus, setZoneBonus] = useState(0);
+  const [diamondBonus, setDiamondBonus] = useState(0);
+  const [startMultBonus, setStartMultBonus] = useState(1);
+
+  // Base size with percentage increase from skills
+  const expandedZoneSize = ZONE_SIZE * (1 + (zoneBonus / 100));
+
   const activeZoneSize = isFirewallActive 
-    ? Math.max(15, ZONE_SIZE * 0.5) 
-    : (focusTapsLeft > 0 ? ZONE_SIZE * 2 : ZONE_SIZE);
+    ? Math.max(15, expandedZoneSize * 0.5) 
+    : (focusTapsLeft > 0 ? expandedZoneSize * 2 : expandedZoneSize);
 
   const displayWorld = isFirewallActive 
     ? { ...activeWorld, bg: '#1A0000', vaultRing: '#FFCC00', textPrimary: '#FFCC00', textSecondary: '#FF3B30' } 
@@ -244,7 +251,6 @@ export default function GameScreen() {
       
       const savedMaxCombo = await SecureStore.getItemAsync(STORAGE_KEYS.maxCombo);
       const savedTotalHeists = await SecureStore.getItemAsync(STORAGE_KEYS.totalHeists);
-      const savedPrestigeMult = await SecureStore.getItemAsync(STORAGE_KEYS.prestigeMultiplier);
       const savedFirewallGames = await SecureStore.getItemAsync(STORAGE_KEYS.gamesSinceFirewall);
 
       const currentBank = savedBank ? Number(savedBank) : 0;
@@ -268,7 +274,6 @@ export default function GameScreen() {
 
       if (savedMaxCombo) setLifetimeMaxCombo(Number(savedMaxCombo));
       if (savedTotalHeists) setTotalHeists(Number(savedTotalHeists));
-      if (savedPrestigeMult) setPrestigeMult(Number(savedPrestigeMult));
       if (savedFirewallGames) setGamesSinceFirewall(Number(savedFirewallGames));
 
       setMainNextUnlock(getNextUnlock(currentBank, currentDiamonds, uSkins, uWorlds));
@@ -279,6 +284,17 @@ export default function GameScreen() {
       if (daily.canClaim) {
         setDailyModal({ visible: true, streak: daily.streak, cash: daily.cashReward, diamonds: daily.diamondReward });
       }
+
+      // Load V2.0 Skill Bonuses
+      const zBonus = await getSkillBonus('zone_expansion');
+      const dBonus = await getSkillBonus('diamond_luck');
+      let mBonus = await getSkillBonus('base_multiplier');
+      if (!mBonus || mBonus < 1) mBonus = 1; // Fallback for level 0
+      
+      setZoneBonus(zBonus);
+      setDiamondBonus(dBonus);
+      setStartMultBonus(mBonus);
+
     } catch (e) { console.log('Error loading data', e); }
   };
 
@@ -356,27 +372,13 @@ export default function GameScreen() {
     loadSavedData();
   };
 
-  const handlePrestige = async () => {
-    const offer = getPrestigeOffer(bank, prestigeMult);
-    if (!offer) return;
-    
-    await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
-    
-    setBank(0);
-    await SecureStore.setItemAsync(STORAGE_KEYS.bank, '0');
-    
-    setPrestigeMult(offer.mult);
-    await SecureStore.setItemAsync(STORAGE_KEYS.prestigeMultiplier, offer.mult.toString());
-    
-    pulseSuccess();
-  };
-
   const randomizeTarget = () => {
     const newAngle = Math.floor(Math.random() * (360 - activeZoneSize));
     setTargetAngle(newAngle);
     
-    // ב-Firewall יש סיכוי של 20% ליהלום בדיוק כמו במשחק הרגיל!
-    const isDiamond = activeWorld.id === 'diamond_world' ? true : (Math.random() < DIAMOND_CHANCE);
+    // Add V2.0 diamond bonus percentage to the base chance
+    const totalDiamondChance = DIAMOND_CHANCE + (diamondBonus / 100);
+    const isDiamond = activeWorld.id === 'diamond_world' ? true : (Math.random() < totalDiamondChance);
     setIsDiamondTarget(isDiamond);
 
     if (isDiamond && !hasSeenDiamondTutorial) {
@@ -418,7 +420,8 @@ export default function GameScreen() {
     rotation.value = 0;
     setScore(0);
     setCombo(0);
-    setMultiplier(1);
+    // Use V2.0 starting multiplier skill instead of prestige
+    setMultiplier(startMultBonus); 
     setDirection(1);
     setConsolationPrize(0);
     setRunMaxCombo(0);
@@ -454,7 +457,6 @@ export default function GameScreen() {
     closeInventory();
     
     if (triggerFirewall) {
-      // בוטל המודאל! ישר מתחילים לשחק את ה-Firewall
       setGameState('PLAYING');
       setTimeout(() => {
         randomizeTarget();
@@ -681,19 +683,17 @@ export default function GameScreen() {
       const tier = getRewardTier(newCombo, activeWorld.id);
       const diamondGain = tier.gain;
 
-      // לוגיקת ה-Firewall החדשה: 80% כסף מרובע, 20% יהלומים!
       if (isFirewallActive) {
         await hapticNotification(Haptics.NotificationFeedbackType.Success);
         
         if (isDiamondTarget) {
           updateAndPersistDiamonds(3);
           setRunDiamondsEarned((d) => d + 3);
-          const reward = Math.floor(BASE_REWARD * multiplier * prestigeMult);
+          const reward = Math.floor(BASE_REWARD * multiplier);
           setScore((s) => s + reward);
           playScoreAnimation(reward);
         } else {
-          // פגעת בבלוק רגיל ב-Firewall - קבל פי 4 מהמכפיל שלך!
-          const reward = Math.floor(BASE_REWARD * (multiplier * 4) * prestigeMult);
+          const reward = Math.floor(BASE_REWARD * (multiplier * 4));
           setScore((s) => s + reward);
           playScoreAnimation(reward);
         }
@@ -706,7 +706,7 @@ export default function GameScreen() {
         await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
         const worldMultiplier = activeWorld.id === 'poh_vault' ? 5 : 1;
         const retroMult = activeWorld.id === 'retro' ? 1.2 : 1;
-        const reward = Math.floor(BASE_REWARD * multiplier * worldMultiplier * prestigeMult * retroMult);
+        const reward = Math.floor(BASE_REWARD * multiplier * worldMultiplier * retroMult);
         
         setScore((s) => s + reward);
         playScoreAnimation(reward);
@@ -798,7 +798,7 @@ export default function GameScreen() {
           isFirewallActive={isFirewallActive}
         />
 
-        <Pressable style={styles.touchArea} onPressIn={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
+        <Pressable testID="vault-touch-area" style={styles.touchArea} onPressIn={canTapVault ? handleTap : undefined} disabled={!canTapVault}>
           <VaultRing 
             CIRCLE_SIZE={CIRCLE_SIZE}
             STROKE_WIDTH={STROKE_WIDTH}
@@ -858,9 +858,6 @@ export default function GameScreen() {
           setDailyModal={setDailyModal}
           handleClaimDaily={handleClaimDaily}
           hackerRank={getHackerRank(totalHeists, lifetimeMaxCombo)}
-          prestigeMult={prestigeMult}
-          prestigeOffer={getPrestigeOffer(bank, prestigeMult)}
-          handlePrestige={handlePrestige}
           isFirewallActive={isFirewallActive}
           bank={bank}
           rankUpModal={rankUpModal}

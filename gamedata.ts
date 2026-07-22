@@ -43,6 +43,22 @@ export interface WeeklyMission {
   rewardValue: number;
 }
 
+export interface SkillLevel {
+  level: number;
+  cost: number;
+  currency: 'cash' | 'diamond';
+  value: number; // The actual bonus value for this level
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string; // Can be an emoji or an SVG identifier later
+  maxLevel: number;
+  levels: SkillLevel[]; // Level 0 is base (no cost, value 0). Array index corresponds to level.
+}
+
 export interface PowerUp {
   id: string;
   name: string;
@@ -145,4 +161,51 @@ export const MISSIONS: Mission[] = [
   { id: 'm_epic_3', title: 'THE 1 PERCENT', desc: 'Accumulate $1,000,000 in Bank', type: 'bank', target: 1000000, rewardType: 'diamond', rewardValue: 1000 }, 
   { id: 'm_epic_4', title: 'UNTOUCHABLE', desc: 'Reach x32 Multiplier', type: 'multiplier', target: 32, rewardType: 'diamond', rewardValue: 1500 },
   { id: 'm_new_3', title: 'MASTER GAMBLER', desc: 'Reach x128 Multiplier', type: 'multiplier', target: 128, rewardType: 'diamond', rewardValue: 3000 },
+];
+
+// --- 2.0 SKILL TREES ---
+export const SKILLS: Skill[] = [
+  {
+    id: 'zone_expansion',
+    name: 'ZONE EXPANSION',
+    desc: 'Permanently increases the green hit zone size by a percentage.',
+    icon: '🎯',
+    maxLevel: 5,
+    levels: [
+      { level: 0, cost: 0, currency: 'cash', value: 0 }, // 0% bonus
+      { level: 1, cost: 25000, currency: 'cash', value: 5 }, // +5% zone size
+      { level: 2, cost: 75000, currency: 'cash', value: 10 },
+      { level: 3, cost: 200000, currency: 'cash', value: 15 },
+      { level: 4, cost: 500000, currency: 'cash', value: 20 },
+      { level: 5, cost: 1500000, currency: 'cash', value: 25 },
+    ],
+  },
+  {
+    id: 'diamond_luck',
+    name: 'DIAMOND ALGORITHM',
+    desc: 'Increases the base chance of a target spawning as a Diamond.',
+    icon: '💎',
+    maxLevel: 5,
+    levels: [
+      { level: 0, cost: 0, currency: 'diamond', value: 0 }, // Base chance
+      { level: 1, cost: 50, currency: 'diamond', value: 2 }, // +2% chance
+      { level: 2, cost: 150, currency: 'diamond', value: 4 },
+      { level: 3, cost: 350, currency: 'diamond', value: 6 },
+      { level: 4, cost: 800, currency: 'diamond', value: 8 },
+      { level: 5, cost: 2000, currency: 'diamond', value: 10 },
+    ],
+  },
+  {
+    id: 'base_multiplier',
+    name: 'STARTING MULTIPLIER',
+    desc: 'Start every run with a higher initial cash multiplier.',
+    icon: '🚀',
+    maxLevel: 3,
+    levels: [
+      { level: 0, cost: 0, currency: 'cash', value: 1 }, // Start at x1
+      { level: 1, cost: 100000, currency: 'cash', value: 2 }, // Start at x2
+      { level: 2, cost: 500000, currency: 'cash', value: 4 }, // Start at x4
+      { level: 3, cost: 2500000, currency: 'cash', value: 8 }, // Start at x8
+    ],
+  },
 ];

@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
-import { MISSIONS, Mission, SKINS, WORLDS, Skin, World, WEEKLY_MISSIONS } from './gamedata';
+import { MISSIONS, Mission, SKINS, WORLDS, Skin, World, WEEKLY_MISSIONS, SKILLS } from './gamedata';
 
 export const STORAGE_KEYS = {
   bank: 'vault_bank',
@@ -36,6 +36,9 @@ export const STORAGE_KEYS = {
 
   prestigeMultiplier: 'stat_prestige_mult',
   gamesSinceFirewall: 'stat_games_firewall',
+  
+  // --- V2.0 SKILLS ---
+  playerSkills: 'vault_player_skills',
 } as const;
 
 export function formatNumber(num: number): string {
@@ -359,13 +362,12 @@ export function getRankReward(rank: string): { type: 'cash' | 'diamond', amount:
   }
 }
 
-// --- פונקציה חדשה: מחשבת את הראנק הבא ואת אחוזי ההתקדמות לקראתו ---
 export function getNextRankDetails(heists: number, maxCombo: number) {
   const currentRank = getHackerRank(heists, maxCombo);
   const currentIndex = RANKS_ORDER.indexOf(currentRank);
 
   if (currentIndex === RANKS_ORDER.length - 1) {
-    return null; // כבר בדרגה הגבוהה ביותר
+    return null; 
   }
 
   const nextRank = RANKS_ORDER[currentIndex + 1];
@@ -440,4 +442,31 @@ export function getRewardTier(nextCombo: number, worldId: string) {
     if (nextCombo >= 51)  return { gain: 2, color: SILVER }; 
     return { gain: 1, color: '#00FFFF' }; 
   }
+}
+
+// --- V2.0 SKILLS FUNCTIONS ---
+
+export async function getPlayerSkills(): Promise<Record<string, number>> {
+  const skillsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.playerSkills);
+  return skillsRaw ? JSON.parse(skillsRaw) : {};
+}
+
+export async function upgradeSkillLevel(skillId: string): Promise<number> {
+  const skills = await getPlayerSkills();
+  const currentLevel = skills[skillId] || 0;
+  const newLevel = currentLevel + 1;
+  skills[skillId] = newLevel;
+  await SecureStore.setItemAsync(STORAGE_KEYS.playerSkills, JSON.stringify(skills));
+  return newLevel;
+}
+
+export async function getSkillBonus(skillId: string): Promise<number> {
+  const skills = await getPlayerSkills();
+  const currentLevel = skills[skillId] || 0;
+  
+  const skillDef = SKILLS.find(s => s.id === skillId);
+  if (!skillDef) return 0;
+  
+  const levelDef = skillDef.levels.find(l => l.level === currentLevel);
+  return levelDef ? levelDef.value : 0;
 }

@@ -30,17 +30,12 @@ export default function GameUI({
   setDailyModal,
   handleClaimDaily,
   hackerRank,
-  prestigeMult,
-  prestigeOffer,
-  handlePrestige,
   isFirewallActive,
   bank,
   rankUpModal,
   setRankUpModal
 }: any) {
   const router = useRouter();
-
-  const [showPrestigeConfirm, setShowPrestigeConfirm] = useState(false);
 
   const renderRunStats = () => (
     <Text style={styles.runStatsText} numberOfLines={1}>
@@ -56,30 +51,28 @@ export default function GameUI({
             <Text style={[styles.actionText, { color: activeWorld.textPrimary }]}>TAP TO HACK</Text>
             
             <Text style={styles.rankText}>
-              RANK: {hackerRank} {prestigeMult > 1 ? `| GHOST x${prestigeMult}` : ''}
+              RANK: {hackerRank}
             </Text>
-            
-            {prestigeOffer && (
-              <TouchableOpacity onPress={() => setShowPrestigeConfirm(true)} style={styles.prestigeButton}>
-                <Text style={styles.prestigeTitle}>💀 GHOST PROTOCOL 💀</Text>
-                <Text style={styles.prestigeDesc}>Burn ${formatNumber(prestigeOffer.cost)} for permanent x{prestigeOffer.mult} multiplier!</Text>
-              </TouchableOpacity>
-            )}
 
-            {isFirewallActive && !prestigeOffer && (
+            {isFirewallActive && (
               <View style={styles.firewallAlert}>
                 <Text style={styles.firewallAlertText}>🔥 FIREWALL BREACH IMMINENT 🔥</Text>
                 <Text style={styles.firewallAlertSub}>Extreme difficulty. Diamonds guaranteed.</Text>
               </View>
             )}
 
-            {mainNextUnlock && !prestigeOffer && !isFirewallActive && (
+            {mainNextUnlock && !isFirewallActive && (
               <Text style={styles.mainNextUnlockText}>
                 NEXT OBJECTIVE: {mainNextUnlock.name} ({mainNextUnlock.currency === 'diamond' ? '💎' : '$'}{formatNumber(mainNextUnlock.missing)} LEFT)
               </Text>
             )}
 
             <View style={styles.menuRow}>
+              {/* --- CYBER CORE V2.0 BUTTON --- */}
+              <TouchableOpacity onPress={() => router.push('../skills')} style={[styles.menuButton, { borderColor: '#00FFFF', backgroundColor: 'rgba(0,255,255,0.1)' }]}>
+                <Text style={[styles.menuButtonText, { color: '#00FFFF' }]}>CYBER CORE</Text>
+              </TouchableOpacity>
+              
               <TouchableOpacity onPress={() => router.push('/shop')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
                 <Text style={styles.menuButtonText}>SHOP</Text>
               </TouchableOpacity>
@@ -196,24 +189,6 @@ export default function GameUI({
         </View>
       )}
 
-      {showPrestigeConfirm && prestigeOffer && (
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { borderColor: '#FF3B30', padding: 25 }]}>
-            <Text style={styles.modalTitle}>CRITICAL WARNING</Text>
-            <Text style={styles.modalText}>This will permanently BURN your entire bank balance (${formatNumber(bank)}).</Text>
-            <Text style={styles.modalSubText}>Proceed to unlock x{prestigeOffer.mult} multiplier?</Text>
-            <View style={{ width: '100%', gap: 15, marginTop: 20 }}>
-              <TouchableOpacity onPress={() => { setShowPrestigeConfirm(false); handlePrestige(); }} style={styles.dangerButton}>
-                <Text style={styles.dangerButtonText}>BURN IT ALL</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowPrestigeConfirm(false)} style={styles.safeButton}>
-                <Text style={styles.safeButtonText}>CANCEL</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
       {rankUpModal && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { borderColor: '#00FF66', padding: 25 }]}>
@@ -252,9 +227,6 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 24, fontWeight: 'bold', letterSpacing: 2, marginBottom: 5 },
   
   rankText: { color: '#00FF66', fontSize: 13, fontWeight: 'bold', marginBottom: 15, letterSpacing: 1 },
-  prestigeButton: { backgroundColor: 'rgba(255,0,0,0.1)', borderWidth: 1, borderColor: '#FF3B30', padding: 12, borderRadius: 15, marginBottom: 15, alignItems: 'center', width: '85%' },
-  prestigeTitle: { color: '#FF3B30', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
-  prestigeDesc: { color: '#FFF', fontSize: 11, textAlign: 'center', marginTop: 4 },
   firewallAlert: { backgroundColor: 'rgba(255,102,0,0.1)', borderWidth: 1, borderColor: '#FF6600', padding: 10, borderRadius: 12, marginBottom: 15, width: '85%', alignItems: 'center' },
   firewallAlertText: { color: '#FF6600', fontWeight: '900', fontSize: 14 },
   firewallAlertSub: { color: '#FFF', fontSize: 10, marginTop: 2 },
@@ -314,6 +286,4 @@ const styles = StyleSheet.create({
   modalSubText: { color: '#666', fontSize: 13, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
   dangerButton: { backgroundColor: '#FF3B30', paddingVertical: 15, borderRadius: 30, width: '100%', alignItems: 'center' },
   dangerButtonText: { color: '#FFF', fontWeight: '900', fontSize: 15 },
-  safeButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#666', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
-  safeButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
 });
