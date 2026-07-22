@@ -47,16 +47,16 @@ export interface SkillLevel {
   level: number;
   cost: number;
   currency: 'cash' | 'diamond';
-  value: number; // The actual bonus value for this level
+  value: number; 
 }
 
 export interface Skill {
   id: string;
   name: string;
   desc: string;
-  icon: string; // Can be an emoji or an SVG identifier later
+  icon: string; 
   maxLevel: number;
-  levels: SkillLevel[]; // Level 0 is base (no cost, value 0). Array index corresponds to level.
+  levels: SkillLevel[]; 
 }
 
 export interface PowerUp {
@@ -66,6 +66,21 @@ export interface PowerUp {
   price: number;
   currency: 'cash' | 'diamond';
   color: string;
+}
+
+// --- V2.0 BOSS / MEGA VAULT DATA MODEL ---
+export interface Boss {
+  id: string;
+  name: string;
+  desc: string;
+  unlockCost: number;
+  unlockCurrency: 'cash' | 'diamond';
+  targetHits: number; // Consecutive hits required to win
+  speedModifier: number; // Less than 1 = faster (e.g., 0.8 is 20% faster)
+  scrambleChance: number; // Chance to trigger Firewall scramble per hit (0 to 1)
+  rewardCash: number;
+  rewardDiamonds: number;
+  themeColor: string;
 }
 
 export const SKINS: Skin[] = [
@@ -117,7 +132,49 @@ export const POWER_UPS: PowerUp[] = [
   { id: 'precision_focus', name: 'PRECISION FOCUS', desc: 'Double hit-zone size for 5 taps.', price: 15, currency: 'diamond', color: '#FFCC00' },
 ];
 
-// --- מאגר שבועי ענק. בכל יום ראשון נבחרות 3 משימות מפה באופן אקראי ---
+// --- 2.0 BOSSES & MEGA VAULTS ---
+export const BOSSES: Boss[] = [
+  {
+    id: 'boss_mainframe',
+    name: 'THE MAINFRAME',
+    desc: 'An outdated but heavily armored central server. Survive 20 hits to crack it.',
+    unlockCost: 50000,
+    unlockCurrency: 'cash',
+    targetHits: 20,
+    speedModifier: 0.85, 
+    scrambleChance: 0.15,
+    rewardCash: 250000,
+    rewardDiamonds: 50,
+    themeColor: '#FF3B30' 
+  },
+  {
+    id: 'boss_quantum',
+    name: 'QUANTUM CORE',
+    desc: 'A volatile experimental server. Highly erratic routing behavior.',
+    unlockCost: 200,
+    unlockCurrency: 'diamond',
+    targetHits: 35,
+    speedModifier: 0.65, 
+    scrambleChance: 0.40, 
+    rewardCash: 1000000,
+    rewardDiamonds: 300,
+    themeColor: '#00FFFF' 
+  },
+  {
+    id: 'boss_ai_overlord',
+    name: 'A.I. OVERLORD',
+    desc: 'The ultimate security measure. One mistake and you are out.',
+    unlockCost: 2500000,
+    unlockCurrency: 'cash',
+    targetHits: 50,
+    speedModifier: 0.50, 
+    scrambleChance: 0.60, 
+    rewardCash: 10000000,
+    rewardDiamonds: 1000,
+    themeColor: '#FF00FF' 
+  }
+];
+
 export const WEEKLY_MISSIONS: WeeklyMission[] = [
   { id: 'w_combo_15', title: 'WARM UP WEEK', desc: 'Reach a Combo of 15 this week', type: 'combo', target: 15, rewardType: 'cash', rewardValue: 8000 },
   { id: 'w_combo_25', title: 'WEEKLY SPEEDRUN', desc: 'Reach a Combo of 25 this week', type: 'combo', target: 25, rewardType: 'cash', rewardValue: 15000 },
@@ -163,7 +220,6 @@ export const MISSIONS: Mission[] = [
   { id: 'm_new_3', title: 'MASTER GAMBLER', desc: 'Reach x128 Multiplier', type: 'multiplier', target: 128, rewardType: 'diamond', rewardValue: 3000 },
 ];
 
-// --- 2.0 SKILL TREES ---
 export const SKILLS: Skill[] = [
   {
     id: 'zone_expansion',
@@ -172,8 +228,8 @@ export const SKILLS: Skill[] = [
     icon: '🎯',
     maxLevel: 5,
     levels: [
-      { level: 0, cost: 0, currency: 'cash', value: 0 }, // 0% bonus
-      { level: 1, cost: 25000, currency: 'cash', value: 5 }, // +5% zone size
+      { level: 0, cost: 0, currency: 'cash', value: 0 }, 
+      { level: 1, cost: 25000, currency: 'cash', value: 5 }, 
       { level: 2, cost: 75000, currency: 'cash', value: 10 },
       { level: 3, cost: 200000, currency: 'cash', value: 15 },
       { level: 4, cost: 500000, currency: 'cash', value: 20 },
@@ -187,8 +243,8 @@ export const SKILLS: Skill[] = [
     icon: '💎',
     maxLevel: 5,
     levels: [
-      { level: 0, cost: 0, currency: 'diamond', value: 0 }, // Base chance
-      { level: 1, cost: 50, currency: 'diamond', value: 2 }, // +2% chance
+      { level: 0, cost: 0, currency: 'diamond', value: 0 }, 
+      { level: 1, cost: 50, currency: 'diamond', value: 2 }, 
       { level: 2, cost: 150, currency: 'diamond', value: 4 },
       { level: 3, cost: 350, currency: 'diamond', value: 6 },
       { level: 4, cost: 800, currency: 'diamond', value: 8 },
@@ -202,10 +258,10 @@ export const SKILLS: Skill[] = [
     icon: '🚀',
     maxLevel: 3,
     levels: [
-      { level: 0, cost: 0, currency: 'cash', value: 1 }, // Start at x1
-      { level: 1, cost: 100000, currency: 'cash', value: 2 }, // Start at x2
-      { level: 2, cost: 500000, currency: 'cash', value: 4 }, // Start at x4
-      { level: 3, cost: 2500000, currency: 'cash', value: 8 }, // Start at x8
+      { level: 0, cost: 0, currency: 'cash', value: 1 }, 
+      { level: 1, cost: 100000, currency: 'cash', value: 2 }, 
+      { level: 2, cost: 500000, currency: 'cash', value: 4 }, 
+      { level: 3, cost: 2500000, currency: 'cash', value: 8 }, 
     ],
   },
 ];
