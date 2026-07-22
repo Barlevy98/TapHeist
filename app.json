@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tap Heist",
     "slug": "tap-heist",
-    "version": "1.4.1",
+    "version": "2.0",
     "scheme": "tapheist",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

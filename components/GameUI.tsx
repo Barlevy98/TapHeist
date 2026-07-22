@@ -33,7 +33,8 @@ export default function GameUI({
   isFirewallActive,
   bank,
   rankUpModal,
-  setRankUpModal
+  setRankUpModal,
+  firewallWarning
 }: any) {
   const router = useRouter();
 
@@ -218,6 +219,15 @@ export default function GameUI({
           </View>
         </View>
       )}
+
+      {/* --- V2.0 Firewall Scramble Warning Overlay --- */}
+      {firewallWarning && gameState === 'PLAYING' && (
+        <View style={styles.scrambleOverlay} pointerEvents="none">
+          <View style={styles.scrambleBox}>
+            <Text style={styles.scrambleText}>{firewallWarning}</Text>
+          </View>
+        </View>
+      )}
     </>
   );
 }
@@ -245,7 +255,6 @@ const styles = StyleSheet.create({
   riskTutorialBtn: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 20, backgroundColor: '#FFCC00', borderRadius: 16 },
   riskTutorialBtnText: { color: '#000', fontWeight: '900', fontSize: 12 },
   
-  // פונטים מוקטנים קבועים - בלי קפיצות
   cashOutButton: { backgroundColor: '#00FF66', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center', marginBottom: 15 },
   cashOutText: { color: '#0A0A0A', fontSize: 14, fontWeight: '900' },
   riskItButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#FF3B30', paddingVertical: 15, width: '100%', borderRadius: 30, alignItems: 'center' },
@@ -286,4 +295,31 @@ const styles = StyleSheet.create({
   modalSubText: { color: '#666', fontSize: 13, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
   dangerButton: { backgroundColor: '#FF3B30', paddingVertical: 15, borderRadius: 30, width: '100%', alignItems: 'center' },
   dangerButtonText: { color: '#FFF', fontWeight: '900', fontSize: 15 },
+
+  // --- V2.0 Scramble Warning Styles ---
+  scrambleOverlay: {
+    position: 'absolute',
+    top: '25%', // Places it slightly above the center ring
+    width: '100%',
+    alignItems: 'center',
+    zIndex: 150,
+  },
+  scrambleBox: {
+    backgroundColor: 'rgba(255, 0, 0, 0.15)',
+    borderWidth: 2,
+    borderColor: '#FF3B30',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  scrambleText: {
+    color: '#FF3B30',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textAlign: 'center',
+    textShadowColor: '#FF3B30',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  }
 });

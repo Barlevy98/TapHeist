@@ -100,6 +100,11 @@ export default function GameScreen() {
   const [introStep, setIntroStep] = useState<number | null>(null);
   const [showRiskTutorial, setShowRiskTutorial] = useState(false);
   const [nearMissText, setNearMissText] = useState<string | null>(null);
+  
+  // V2.0 Firewall Scramble Warning
+  const [firewallWarning, setFirewallWarning] = useState<string | null>(null);
+  const firewallWarningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [missionBadge, setMissionBadge] = useState(0);
   const [dailyModal, setDailyModal] = useState<{ visible: boolean; streak: number; cash: number; diamonds: number }>({
     visible: false, streak: 0, cash: 0, diamonds: 0,
@@ -126,6 +131,10 @@ export default function GameScreen() {
   const [zoneBonus, setZoneBonus] = useState(0);
   const [diamondBonus, setDiamondBonus] = useState(0);
   const [startMultBonus, setStartMultBonus] = useState(1);
+
+  // V2.0 Minigame States
+  const [minigameAngles, setMinigameAngles] = useState<number[]>([]);
+  const [minigameHits, setMinigameHits] = useState<boolean[]>([]);
 
   // Base size with percentage increase from skills
   const expandedZoneSize = ZONE_SIZE * (1 + (zoneBonus / 100));
@@ -285,11 +294,10 @@ export default function GameScreen() {
         setDailyModal({ visible: true, streak: daily.streak, cash: daily.cashReward, diamonds: daily.diamondReward });
       }
 
-      // Load V2.0 Skill Bonuses
       const zBonus = await getSkillBonus('zone_expansion');
       const dBonus = await getSkillBonus('diamond_luck');
       let mBonus = await getSkillBonus('base_multiplier');
-      if (!mBonus || mBonus < 1) mBonus = 1; // Fallback for level 0
+      if (!mBonus || mBonus < 1) mBonus = 1; 
       
       setZoneBonus(zBonus);
       setDiamondBonus(dBonus);
@@ -346,6 +354,12 @@ export default function GameScreen() {
     nearMissTimer.current = setTimeout(() => setNearMissText(null), 1500);
   };
 
+  const showFirewallWarning = (msg: string) => {
+    setFirewallWarning(msg);
+    if (firewallWarningTimer.current) clearTimeout(firewallWarningTimer.current);
+    firewallWarningTimer.current = setTimeout(() => setFirewallWarning(null), 1500);
+  };
+
   const pulseSuccess = () => { successPulse.value = withSequence(withTiming(1.08, { duration: 200 }), withTiming(1, { duration: 300 })); };
 
   const advanceIntro = async () => {
@@ -376,7 +390,6 @@ export default function GameScreen() {
     const newAngle = Math.floor(Math.random() * (360 - activeZoneSize));
     setTargetAngle(newAngle);
     
-    // Add V2.0 diamond bonus percentage to the base chance
     const totalDiamondChance = DIAMOND_CHANCE + (diamondBonus / 100);
     const isDiamond = activeWorld.id === 'diamond_world' ? true : (Math.random() < totalDiamondChance);
     setIsDiamondTarget(isDiamond);
@@ -420,7 +433,6 @@ export default function GameScreen() {
     rotation.value = 0;
     setScore(0);
     setCombo(0);
-    // Use V2.0 starting multiplier skill instead of prestige
     setMultiplier(startMultBonus); 
     setDirection(1);
     setConsolationPrize(0);
@@ -435,6 +447,9 @@ export default function GameScreen() {
     setIsFrozen(false);
     isFrozenRef.current = false;
     
+    setMinigameAngles([]);
+    setMinigameHits([]);
+
     cancelAnimation(shieldScale); shieldScale.value = 1;
     cancelAnimation(freezeScale); freezeScale.value = 1;
     cancelAnimation(focusScale); focusScale.value = 1;
@@ -647,7 +662,10 @@ export default function GameScreen() {
   const handleTap = async () => {
     if (gameState === 'START' || gameState === 'CASHED_OUT') { await requestStartGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
-    if (gameState !== 'PLAYING') return;
+    
+    // Ignore taps during minigame transition to prevent bugs
+    if (gameState !== 'PLAYING' && gameState !== 'MINIGAME') return;
+    
     if (isInventoryOpen) { closeInventory(); return; }
 
     const currentRawAngle = rotation.value;
@@ -655,6 +673,82 @@ export default function GameScreen() {
     rotation.value = currentRawAngle;
 
     const normalizedCurrentAngle = ((currentRawAngle % 360) + 360) % 360;
+
+    // --- MINIGAME HIT LOGIC ---
+    if (gameState === 'MINIGAME') {
+      let hitIndex = -1;
+      const currentHitBuffer = HIT_BUFFER + 1.5; 
+      
+      // Check which unhit target the pointer is over
+      for (let i = 0; i < minigameAngles.length; i++) {
+        if (!minigameHits[i]) {
+          const targetCenter = minigameAngles[i] + activeZoneSize / 2;
+          let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
+          if (angleDiff > 180) angleDiff = 360 - angleDiff;
+          
+          if (angleDiff <= (activeZoneSize / 2) + currentHitBuffer) {
+            hitIndex = i;
+            break;
+          }
+        }
+      }
+
+      if (hitIndex !== -1) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        flashHit();
+        
+        const newHits = [...minigameHits];
+        newHits[hitIndex] = true;
+        setMinigameHits(newHits);
+
+        // Give combo points for minigame hits too
+        setCombo((c) => c + 1);
+        setRunMaxCombo((c) => Math.max(c, combo + 1));
+        
+        if (newHits.every(h => h)) {
+          showFirewallWarning('SYSTEM BREACHED! +$$$');
+          pulseSuccess();
+          
+          const bonusCash = 25000 * multiplier * startMultBonus;
+          const bonusDiamonds = 15;
+          updateAndPersistBank(bonusCash);
+          updateAndPersistDiamonds(bonusDiamonds);
+          setScore((s) => s + bonusCash);
+          setRunDiamondsEarned((d) => d + bonusDiamonds);
+          playScoreAnimation(bonusCash);
+
+          setGameState('MINIGAME_TRANSITION');
+          setTimeout(() => {
+            setGameState('PLAYING');
+            randomizeTarget();
+            startRotation(getSpeedDuration(combo + 1), direction);
+          }, 1200);
+
+        } else {
+          startRotation(900, direction); 
+        }
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
+        if (isShieldActive) {
+          setIsShieldActive(false);
+          cancelAnimation(shieldScale); shieldScale.value = 1;
+          flashMiss();
+          showNearMiss('🛡️ SHIELD BROKEN!');
+          const nextDirection = direction === 1 ? -1 : 1;
+          setDirection(nextDirection);
+          startRotation(900, nextDirection);
+          return;
+        }
+
+        flashMiss();
+        showFirewallWarning('ACCESS DENIED');
+        await processGameOver();
+      }
+      return;
+    }
+
+    // --- NORMAL PLAY HIT LOGIC ---
     const targetCenter = targetAngle + activeZoneSize / 2;
     let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
     if (angleDiff > 180) angleDiff = 360 - angleDiff;
@@ -713,14 +807,45 @@ export default function GameScreen() {
       }
 
       let nextDirection = direction;
-      if (newCombo % 5 === 0) {
-        nextDirection = direction === 1 ? -1 : 1;
-        setDirection(nextDirection);
+      let nextDuration = getSpeedDuration(newCombo);
+
+      if (isFirewallActive) {
+        if (newCombo > 0 && Math.random() < 0.35) { 
+          showFirewallWarning(Math.random() > 0.5 ? '⚠️ ROUTING CHANGED ⚠️' : '⚠️ SPEED GLITCH ⚠️');
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); 
+          nextDirection = Math.random() > 0.5 ? 1 : -1;
+          nextDuration *= (Math.random() > 0.5 ? 0.6 : 1.4); 
+          setDirection(nextDirection);
+        }
+      } else {
+        if (newCombo % 5 === 0) {
+          nextDirection = direction === 1 ? -1 : 1;
+          setDirection(nextDirection);
+        }
       }
 
       const riskInterval = activeWorld.id === 'blood' ? 5 : 10;
       
-      if (newCombo % riskInterval === 0 && activeWorld.id !== 'diamond_world') { 
+      // V2.0 Minigame Trigger
+      if (newCombo > 0 && newCombo % 40 === 0) {
+        cancelAnimation(rotation);
+        setGameState('MINIGAME_TRANSITION');
+        showFirewallWarning('🔓 CRACKING CODE... 🔓');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        
+        const angles = [];
+        for(let i=0; i<3; i++) {
+          angles.push(Math.floor(Math.random() * (360 - activeZoneSize)));
+        }
+        setMinigameAngles(angles);
+        setMinigameHits([false, false, false]);
+
+        setTimeout(() => {
+          setGameState('MINIGAME');
+          startRotation(900, direction); 
+        }, 1500);
+        return;
+      } else if (newCombo % riskInterval === 0 && activeWorld.id !== 'diamond_world') { 
         if (activeWorld.id === 'cyber') {
           const newMult = multiplier * 2;
           setMultiplier(newMult);
@@ -735,7 +860,7 @@ export default function GameScreen() {
       }
 
       randomizeTarget();
-      startRotation(getSpeedDuration(newCombo), nextDirection);
+      startRotation(nextDuration, nextDirection);
     } else {
       await hapticNotification(Haptics.NotificationFeedbackType.Error);
 
@@ -766,8 +891,12 @@ export default function GameScreen() {
   const circumference = 2 * Math.PI * radius;
   const strokeDasharray = `${(activeZoneSize / 360) * circumference} ${circumference}`;
   const strokeDashoffset = -(targetAngle / 360) * circumference;
+  
+  // Convert minigame angles to offsets for VaultRing
+  const minigameOffsets = minigameAngles.map(a => -(a / 360) * circumference);
+
   const isDirectionWarning = gameState === 'PLAYING' && combo > 0 && (combo + 1) % 5 === 0;
-  const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL';
+  const canTapVault = gameState === 'PLAYING' || gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'TUTORIAL' || gameState === 'MINIGAME';
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: displayWorld.bg }]}>
@@ -813,6 +942,8 @@ export default function GameScreen() {
             pointerAnimatedStyle={pointerAnimatedStyle}
             activeSkin={activeSkin}
             currentRewardTier={currentRewardTier} 
+            minigameOffsets={minigameOffsets}
+            minigameHits={minigameHits}
           />
         </Pressable>
 
@@ -862,6 +993,7 @@ export default function GameScreen() {
           bank={bank}
           rankUpModal={rankUpModal}
           setRankUpModal={setRankUpModal}
+          firewallWarning={firewallWarning} 
         />
 
       </Animated.View>

@@ -17,7 +17,9 @@ export default function VaultRing({
   hitFlashStyle,
   pointerAnimatedStyle,
   activeSkin,
-  currentRewardTier 
+  currentRewardTier,
+  minigameOffsets = [],
+  minigameHits = []
 }: any) {
   
   const displayColor = currentRewardTier?.color || '#00FFFF';
@@ -34,14 +36,32 @@ export default function VaultRing({
         <Circle cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={activeWorld.vaultRing} strokeWidth={STROKE_WIDTH} fill="none" />
       </Svg>
 
-      {/* אזור המטרה */}
+      {/* אזור המטרה / מטרות המיני-גיימ */}
       <Animated.View style={[styles.svg, targetOpacityStyle]} pointerEvents="none">
         <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
-          <Circle
-            cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={blockColor}
-            strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
-            origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
-          />
+          
+          {gameState === 'MINIGAME' && minigameOffsets.length > 0 ? (
+            // ציור המטרות של המיני-גיימ (מטרות נעילה אדומות, הופכות לאפורות כשנפגעות)
+            minigameOffsets.map((offset: number, index: number) => (
+              <Circle
+                key={`minigame-target-${index}`}
+                cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} 
+                stroke={minigameHits[index] ? 'rgba(255,255,255,0.1)' : '#FF3B30'}
+                strokeWidth={STROKE_WIDTH} fill="none" 
+                strokeDasharray={strokeDasharray} strokeDashoffset={offset}
+                origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
+              />
+            ))
+          ) : (
+            // המטרה הרגילה
+            <Circle
+              cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={blockColor}
+              strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
+              origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
+            />
+          )}
+
+          {/* אייקון היהלום יוצג רק אם זה לא מצב מיני-גיימ */}
           {isDiamondTarget && gameState === 'PLAYING' && (
             <G x={CIRCLE_SIZE / 2} y={CIRCLE_SIZE / 2 - radius}>
               <Path d="M -8 -8 L 8 -8 L 13 -1 L 0 13 L -13 -1 Z" fill={displayColor} stroke={isBlack ? "#FFFFFF" : "none"} strokeWidth={isBlack ? 1.5 : 0} />
