@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { CORE_TUTORIAL_STEPS, formatNumber } from '../gameHelpers';
@@ -34,7 +34,8 @@ export default function GameUI({
   bank,
   rankUpModal,
   setRankUpModal,
-  firewallWarning
+  firewallWarning,
+  activeBoss
 }: any) {
   const router = useRouter();
 
@@ -69,9 +70,14 @@ export default function GameUI({
             )}
 
             <View style={styles.menuRow}>
-              {/* --- CYBER CORE V2.0 BUTTON --- */}
+              {/* --- CYBER CORE BUTTON --- */}
               <TouchableOpacity onPress={() => router.push('../skills')} style={[styles.menuButton, { borderColor: '#00FFFF', backgroundColor: 'rgba(0,255,255,0.1)' }]}>
                 <Text style={[styles.menuButtonText, { color: '#00FFFF' }]}>CYBER CORE</Text>
+              </TouchableOpacity>
+              
+              {/* --- MEGA VAULTS BUTTON (FIXED: Temporary Alert instead of broken route) --- */}
+              <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Mega Vaults screen will be built next!')} style={[styles.menuButton, { borderColor: '#FF00FF', backgroundColor: 'rgba(255,0,255,0.1)' }]}>
+                <Text style={[styles.menuButtonText, { color: '#FF00FF' }]}>MEGA VAULTS</Text>
               </TouchableOpacity>
               
               <TouchableOpacity onPress={() => router.push('/shop')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
@@ -134,6 +140,17 @@ export default function GameUI({
             <TouchableOpacity onPress={onRevive} style={[styles.retryButton, { backgroundColor: '#FFCC00', marginBottom: 12, paddingHorizontal: 30 }]}><Text style={[styles.retryButtonText, { color: '#000' }]}>WATCH AD TO REVIVE</Text></TouchableOpacity>
             <TouchableOpacity onPress={processGameOver} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>GIVE UP (Take 25%)</Text></TouchableOpacity>
           </View>
+        )}
+
+        {/* --- V2.0 Boss Defeated Screen --- */}
+        {gameState === 'BOSS_DEFEATED' && activeBoss && (
+          <Animated.View style={[styles.gameOverContainer, successPulseStyle]}>
+            <Text style={[styles.successText, { color: activeBoss.themeColor, fontSize: 30 }]}>SYSTEM COMPROMISED</Text>
+            <Text style={[styles.scrappedText, { color: '#FFF' }]}>{activeBoss.name} HAS FALLEN</Text>
+            <Text style={[styles.finalScoreText, { color: activeBoss.themeColor }]} numberOfLines={1}>Secured 💎 {formatNumber(runDiamondsEarned)} to Vault</Text>
+            <Text style={[styles.finalScoreText, { color: activeBoss.themeColor }]} numberOfLines={1}>Transferred ${formatNumber(score)} to Bank</Text>
+            <TouchableOpacity onPress={() => setGameState('START')} style={[styles.retryButton, { backgroundColor: activeBoss.themeColor, marginTop: 15 }]}><Text style={[styles.retryButtonText, { color: '#000' }]}>RETURN TO MENU</Text></TouchableOpacity>
+          </Animated.View>
         )}
 
         {gameState === 'CASHED_OUT' && (
@@ -220,8 +237,8 @@ export default function GameUI({
         </View>
       )}
 
-      {/* --- V2.0 Firewall Scramble Warning Overlay --- */}
-      {firewallWarning && gameState === 'PLAYING' && (
+      {/* --- V2.0 Scramble Warning Overlay --- */}
+      {firewallWarning && (gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && (
         <View style={styles.scrambleOverlay} pointerEvents="none">
           <View style={styles.scrambleBox}>
             <Text style={styles.scrambleText}>{firewallWarning}</Text>

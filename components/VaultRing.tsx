@@ -19,14 +19,17 @@ export default function VaultRing({
   activeSkin,
   currentRewardTier,
   minigameOffsets = [],
-  minigameHits = []
+  minigameHits = [],
+  activeBoss
 }: any) {
   
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
   
-  // הבלוק יהיה בצבע הרגיל, או בצבע היהלום כשהוא נבחר (גם במהלך Firewall)
-  const blockColor = isDiamondTarget ? displayColor : '#00FF66';
+  // בקרב בוס אזור המטרה הוא לבן בוהק כדי לבלוט מעל צבעי המערכת. אחרת, צבע רגיל.
+  const blockColor = (gameState === 'BOSS_BATTLE' && activeBoss) 
+    ? '#FFFFFF' 
+    : (isDiamondTarget ? displayColor : '#00FF66');
 
   return (
     <View style={[styles.vaultContainer, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
@@ -41,7 +44,6 @@ export default function VaultRing({
         <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
           
           {gameState === 'MINIGAME' && minigameOffsets.length > 0 ? (
-            // ציור המטרות של המיני-גיימ (מטרות נעילה אדומות, הופכות לאפורות כשנפגעות)
             minigameOffsets.map((offset: number, index: number) => (
               <Circle
                 key={`minigame-target-${index}`}
@@ -53,7 +55,6 @@ export default function VaultRing({
               />
             ))
           ) : (
-            // המטרה הרגילה
             <Circle
               cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={blockColor}
               strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
@@ -61,8 +62,7 @@ export default function VaultRing({
             />
           )}
 
-          {/* אייקון היהלום יוצג רק אם זה לא מצב מיני-גיימ */}
-          {isDiamondTarget && gameState === 'PLAYING' && (
+          {isDiamondTarget && (gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && (
             <G x={CIRCLE_SIZE / 2} y={CIRCLE_SIZE / 2 - radius}>
               <Path d="M -8 -8 L 8 -8 L 13 -1 L 0 13 L -13 -1 Z" fill={displayColor} stroke={isBlack ? "#FFFFFF" : "none"} strokeWidth={isBlack ? 1.5 : 0} />
             </G>

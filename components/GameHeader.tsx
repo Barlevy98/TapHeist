@@ -31,10 +31,15 @@ export default function GameHeader({
   isDirectionWarning,
   nearMissText,
   runDiamondsEarned,
-  currentRewardTier
+  currentRewardTier,
+  activeBoss,
+  bossHitsLeft
 }: any) {
 
   const displayColor = currentRewardTier?.color || '#00FFFF';
+  
+  // Calculate Boss Health Percentage
+  const bossHealthPercent = activeBoss ? Math.max(0, (bossHitsLeft / activeBoss.targetHits) * 100) : 100;
 
   return (
     <>
@@ -48,7 +53,7 @@ export default function GameHeader({
           </View>
         </View>
 
-        {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER') && (
+        {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'GAMEOVER' || gameState === 'REVIVE_OFFER' || gameState === 'BOSS_BATTLE') && (
           <View style={styles.scoreContainer}>
             <View>
               {activeWorld.id === 'diamond_world' ? (
@@ -77,7 +82,18 @@ export default function GameHeader({
         )}
       </View>
 
-      {gameState === 'PLAYING' && (
+      {/* V2.0 Boss Health Bar UI */}
+      {gameState === 'BOSS_BATTLE' && activeBoss && (
+        <View style={styles.bossHealthContainer} pointerEvents="none">
+          <Text style={[styles.bossName, { color: activeBoss.themeColor }]}>{activeBoss.name}</Text>
+          <Text style={styles.bossHitsText}>SYSTEM INTEGRITY: {bossHitsLeft} HITS LEFT</Text>
+          <View style={[styles.healthBarBg, { borderColor: activeBoss.themeColor }]}>
+            <View style={[styles.healthBarFill, { width: `${bossHealthPercent}%`, backgroundColor: activeBoss.themeColor }]} />
+          </View>
+        </View>
+      )}
+
+      {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && (
         <View style={styles.activeBoostsHud}>
           {isShieldActive && (
             <Animated.View style={[styles.miniBoostIcon, { borderColor: '#00FF66', shadowColor: '#00FF66' }, shieldAnimStyle]}>
@@ -105,13 +121,13 @@ export default function GameHeader({
         </View>
       )}
 
-      {(gameState === 'PLAYING' || gameState === 'RISK') && combo > 0 && (
+      {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'BOSS_BATTLE') && combo > 0 && (
         <View style={styles.comboHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Text style={[styles.comboText, { color: activeSkin.color }]} numberOfLines={1}>{combo} COMBO</Text>
           </View>
-          {gameState === 'PLAYING' && isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
-          {gameState === 'PLAYING' && nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
+          {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
+          {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
         </View>
       )}
     </>
@@ -123,7 +139,6 @@ const styles = StyleSheet.create({
   bankContainer: { alignItems: 'flex-start', flexShrink: 1, paddingRight: 10 },
   bankLabel: { fontSize: 12, fontWeight: 'bold', letterSpacing: 2 },
   
-  // פונטים מוקטנים קבועים - בלי קפיצות ובלי ריבועים
   bankText: { color: '#00FF66', fontSize: 16, fontWeight: '900' }, 
   diamondText: { color: '#00FFFF', fontSize: 14, fontWeight: 'bold' }, 
   
@@ -133,9 +148,16 @@ const styles = StyleSheet.create({
   floatingScoreText: { fontSize: 18, fontWeight: '900', textShadowColor: '#000', textShadowRadius: 5 }, 
   multiplierText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginTop: -5 }, 
   
-  activeBoostsHud: { position: 'absolute', top: 110, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
+  // V2.0 Boss Styles
+  bossHealthContainer: { position: 'absolute', top: 90, width: '100%', alignItems: 'center', zIndex: 5 },
+  bossName: { fontSize: 22, fontWeight: '900', letterSpacing: 3, textShadowColor: '#000', textShadowRadius: 10, textShadowOffset: { width: 0, height: 0 } },
+  bossHitsText: { color: '#FFF', fontSize: 11, fontWeight: 'bold', marginTop: 2, marginBottom: 8, letterSpacing: 1 },
+  healthBarBg: { width: '60%', height: 12, backgroundColor: 'rgba(0,0,0,0.8)', borderWidth: 1, borderRadius: 6, overflow: 'hidden' },
+  healthBarFill: { height: '100%' },
+
+  activeBoostsHud: { position: 'absolute', top: 150, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
-  comboHeader: { position: 'absolute', top: 100, width: '100%', alignItems: 'center', zIndex: 10 },
+  comboHeader: { position: 'absolute', top: 150, width: '100%', alignItems: 'center', zIndex: 10 },
   comboText: { fontSize: 22, fontWeight: '900', letterSpacing: 3, opacity: 0.8 }, 
   warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1 },
   nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2 },
