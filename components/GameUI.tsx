@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { CORE_TUTORIAL_STEPS, formatNumber } from '../gameHelpers';
@@ -75,8 +75,8 @@ export default function GameUI({
                 <Text style={[styles.menuButtonText, { color: '#00FFFF' }]}>CYBER CORE</Text>
               </TouchableOpacity>
               
-              {/* --- MEGA VAULTS BUTTON (FIXED: Temporary Alert instead of broken route) --- */}
-              <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Mega Vaults screen will be built next!')} style={[styles.menuButton, { borderColor: '#FF00FF', backgroundColor: 'rgba(255,0,255,0.1)' }]}>
+              {/* --- MEGA VAULTS BUTTON (Fixed Route) --- */}
+              <TouchableOpacity onPress={() => router.push('../bosses')} style={[styles.menuButton, { borderColor: '#FF00FF', backgroundColor: 'rgba(255,0,255,0.1)' }]}>
                 <Text style={[styles.menuButtonText, { color: '#FF00FF' }]}>MEGA VAULTS</Text>
               </TouchableOpacity>
               
@@ -307,9 +307,9 @@ const styles = StyleSheet.create({
   
   modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   modalContent: { width: '80%', backgroundColor: '#111', borderWidth: 2, borderColor: '#FF3B30', padding: 25, borderRadius: 20, alignItems: 'center' },
-  modalTitle: { fontSize: 22, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10, textAlign: 'center' },
-  modalText: { color: '#FFF', fontSize: 14, textAlign: 'center', marginBottom: 5 },
-  modalSubText: { color: '#666', fontSize: 13, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
+  modalTitle: { fontSize: 24, color: '#FF3B30', fontWeight: '900', letterSpacing: 2, marginBottom: 10 },
+  modalText: { color: '#FFF', fontSize: 16, textAlign: 'center', marginBottom: 5 },
+  modalSubText: { color: '#666', fontSize: 14, textAlign: 'center', marginBottom: 25, fontWeight: 'bold' },
   dangerButton: { backgroundColor: '#FF3B30', paddingVertical: 15, borderRadius: 30, width: '100%', alignItems: 'center' },
   dangerButtonText: { color: '#FFF', fontWeight: '900', fontSize: 15 },
 

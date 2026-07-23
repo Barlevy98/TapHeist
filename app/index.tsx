@@ -139,6 +139,7 @@ export default function GameScreen() {
   // V2.0 Boss Battle States
   const [activeBoss, setActiveBoss] = useState<Boss | null>(null);
   const [bossHitsLeft, setBossHitsLeft] = useState(0);
+  const [pendingBoss, setPendingBoss] = useState<Boss | null>(null);
 
   // Base size with percentage increase from skills
   const expandedZoneSize = ZONE_SIZE * (1 + (zoneBonus / 100));
@@ -250,14 +251,34 @@ export default function GameScreen() {
     }
   }, [pendingRevive]);
 
+  // האזנה לחזרה למסך הראשי
   useFocusEffect(
     useCallback(() => {
-      loadSavedData();
-      loadHapticsEnabled();
-      if (!rewardedAd.loaded) rewardedAd.load();
-      if (!interstitialAd.loaded) interstitialAd.load();
+      const initFocus = async () => {
+        await loadSavedData();
+        await loadHapticsEnabled();
+        if (!rewardedAd.loaded) rewardedAd.load();
+        if (!interstitialAd.loaded) interstitialAd.load();
+
+        // בדיקה אם חזרנו ממסך הבוסים עם פקודת פריצה
+        const bossId = await SecureStore.getItemAsync('pending_boss_battle');
+        if (bossId) {
+          await SecureStore.deleteItemAsync('pending_boss_battle');
+          const foundBoss = BOSSES.find(b => b.id === bossId);
+          if (foundBoss) setPendingBoss(foundBoss);
+        }
+      };
+      initFocus();
     }, [])
   );
+
+  // מפעיל את הבוס ברגע שהסטייטים הספיקו להתעדכן והמסך מוכן
+  useEffect(() => {
+    if (pendingBoss) {
+      startBossBattle(pendingBoss);
+      setPendingBoss(null);
+    }
+  }, [pendingBoss]);
 
   const loadSavedData = async () => {
     try {
