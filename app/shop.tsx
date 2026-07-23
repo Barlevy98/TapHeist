@@ -115,7 +115,6 @@ export default function ShopScreen() {
       const savedUnlockedWorlds = await SecureStore.getItemAsync('vault_unlocked_worlds');
       const savedEquippedWorld = await SecureStore.getItemAsync('vault_equipped_world');
 
-      // הוחלף ל-Number
       if (savedBank !== null) setBank(Number(savedBank));
       if (savedDiamonds !== null) setDiamonds(Number(savedDiamonds));
       if (savedUnlockedSkins !== null) setUnlockedSkins(JSON.parse(savedUnlockedSkins));
@@ -279,46 +278,86 @@ export default function ShopScreen() {
         
         <ScrollView style={{ width: '100%', marginTop: 10 }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 100 }}>
           
-          {activeTab === 'skins' && SKINS.map((skin) => {
-            const isUnlocked = unlockedSkins.includes(skin.id);
-            const isEquipped = equippedSkin === skin.id;
-            
-            return (
-              <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <View style={[styles.colorPreviewContainer, { shadowColor: skin.color, shadowRadius: skin.glow / 2 }]}>
-                    {skin.shape === 'gradient' && skin.primaryColor && skin.secondaryColor ? (
-                      <Svg width="20" height="20">
-                        <Defs>
-                          <LinearGradient id={`grad-${skin.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                            <Stop offset="0%" stopColor={skin.primaryColor} stopOpacity="1" />
-                            <Stop offset="100%" stopColor={skin.secondaryColor} stopOpacity="1" />
-                          </LinearGradient>
-                        </Defs>
-                        <Circle cx="10" cy="10" r="10" fill={`url(#grad-${skin.id})`} />
-                      </Svg>
-                    ) : (
-                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: skin.color }} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1, paddingRight: 10 }}>
-                    <Text style={styles.itemName} numberOfLines={1} adjustsFontSizeToFit>{skin.name}</Text>
-                    <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
-                  </View>
-                </View>
-                <View>
-                  {isEquipped ? <Text style={[styles.itemStatus, { color: skin.color }]}>EQUIPPED</Text> : 
-                   isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
-                   <Text style={[styles.itemStatus, { color: skin.currency === 'diamond' ? '#00FFFF' : '#00FF66' }]}>{skin.currency === 'diamond' ? `💎 ${skin.price.toLocaleString()}` : `$${skin.price.toLocaleString()}`}</Text>}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {activeTab === 'skins' && (
+            <>
+              {SKINS.filter(s => s.currency === 'cash').map((skin) => {
+                const isUnlocked = unlockedSkins.includes(skin.id);
+                const isEquipped = equippedSkin === skin.id;
+                
+                return (
+                  <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <View style={[styles.colorPreviewContainer, { shadowColor: skin.color, shadowRadius: skin.glow / 2 }]}>
+                        {skin.shape === 'gradient' && skin.primaryColor && skin.secondaryColor ? (
+                          <Svg width="20" height="20">
+                            <Defs>
+                              <LinearGradient id={`grad-${skin.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <Stop offset="0%" stopColor={skin.primaryColor} stopOpacity="1" />
+                                <Stop offset="100%" stopColor={skin.secondaryColor} stopOpacity="1" />
+                              </LinearGradient>
+                            </Defs>
+                            <Circle cx="10" cy="10" r="10" fill={`url(#grad-${skin.id})`} />
+                          </Svg>
+                        ) : (
+                          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: skin.color }} />
+                        )}
+                      </View>
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={styles.itemName} numberOfLines={1} adjustsFontSizeToFit>{skin.name}</Text>
+                        <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', minWidth: 60 }}>
+                      {isEquipped ? <Text style={[styles.itemStatus, { color: skin.color }]}>EQUIPPED</Text> : 
+                       isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
+                       <Text style={[styles.itemStatus, { color: '#00FF66' }]}>${skin.price.toLocaleString()}</Text>}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <Text style={styles.categoryDivider}>--- PREMIUM POINTERS ---</Text>
+
+              {SKINS.filter(s => s.currency === 'diamond').map((skin) => {
+                const isUnlocked = unlockedSkins.includes(skin.id);
+                const isEquipped = equippedSkin === skin.id;
+                
+                return (
+                  <TouchableOpacity key={skin.id} style={[styles.shopItem, isEquipped && { borderColor: skin.color, backgroundColor: 'rgba(255,255,255,0.05)' }]} onPress={() => handlePurchase(skin, 'skin')}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <View style={[styles.colorPreviewContainer, { shadowColor: skin.color, shadowRadius: skin.glow / 2 }]}>
+                        {skin.shape === 'gradient' && skin.primaryColor && skin.secondaryColor ? (
+                          <Svg width="20" height="20">
+                            <Defs>
+                              <LinearGradient id={`grad-${skin.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <Stop offset="0%" stopColor={skin.primaryColor} stopOpacity="1" />
+                                <Stop offset="100%" stopColor={skin.secondaryColor} stopOpacity="1" />
+                              </LinearGradient>
+                            </Defs>
+                            <Circle cx="10" cy="10" r="10" fill={`url(#grad-${skin.id})`} />
+                          </Svg>
+                        ) : (
+                          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: skin.color }} />
+                        )}
+                      </View>
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={styles.itemName} numberOfLines={1} adjustsFontSizeToFit>{skin.name}</Text>
+                        <Text style={styles.itemSpecs}>Glow: {skin.glow} | Width: {skin.width}</Text>
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', minWidth: 60 }}>
+                      {isEquipped ? <Text style={[styles.itemStatus, { color: skin.color }]}>EQUIPPED</Text> : 
+                       isUnlocked ? <Text style={[styles.itemStatus, { color: '#FFF' }]}>EQUIP</Text> : 
+                       <Text style={[styles.itemStatus, { color: '#00FFFF' }]}>💎 {skin.price.toLocaleString()}</Text>}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          )}
 
           {activeTab === 'worlds' && (
             <>
-             
-              
               {WORLDS.filter(w => w.currency === 'cash').map((world) => {
                 const isUnlocked = unlockedWorlds.includes(world.id);
                 const isEquipped = equippedWorld === world.id;
@@ -343,6 +382,8 @@ export default function ShopScreen() {
                 );
               })}
               
+              <Text style={styles.categoryDivider}>--- PREMIUM WORLDS ---</Text>
+
               {WORLDS.filter(w => w.currency === 'diamond').map((world) => {
                 const isUnlocked = unlockedWorlds.includes(world.id);
                 const isEquipped = equippedWorld === world.id;

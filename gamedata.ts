@@ -75,15 +75,16 @@ export interface Boss {
   desc: string;
   unlockCost: number;
   unlockCurrency: 'cash' | 'diamond';
-  targetHits: number; // Consecutive hits required to win
-  speedModifier: number; // Less than 1 = faster (e.g., 0.8 is 20% faster)
-  scrambleChance: number; // Chance to trigger Firewall scramble per hit (0 to 1)
+  targetHits: number; 
+  speedModifier: number; 
+  scrambleChance: number; 
   rewardCash: number;
   rewardDiamonds: number;
   themeColor: string;
 }
 
 export const SKINS: Skin[] = [
+  // --- CASH SKINS ---
   { id: 'white', name: 'STANDARD WHITE', currency: 'cash', price: 0, color: '#FFFFFF', glow: 5, width: 4, shape: 'standard' },
   { id: 'pink', name: 'NEON PINK', currency: 'cash', price: 350, color: '#FF007F', glow: 8, width: 4, shape: 'standard' },
   { id: 'cyan', name: 'CYBER CYAN', currency: 'cash', price: 1000, color: '#00F0FF', glow: 8, width: 4, shape: 'standard' },
@@ -102,6 +103,7 @@ export const SKINS: Skin[] = [
   { id: 'toxic_spill', name: 'TOXIC SPILL', currency: 'cash', price: 200000, color: '#39FF14', glow: 25, width: 8, shape: 'gradient', primaryColor: '#39FF14', secondaryColor: '#8A2BE2' },
   { id: 'blood_orange', name: 'BLOOD ORANGE', currency: 'cash', price: 250000, color: '#FF4500', glow: 20, width: 8, shape: 'gradient', primaryColor: '#FF4500', secondaryColor: '#FF0000' },
 
+  // --- DIAMOND SKINS ---
   { id: 'ruby', name: 'BLOOD RUBY', currency: 'diamond', price: 100, color: '#E0115F', glow: 15, width: 6, shape: 'spiked' },
   { id: 'matrix', name: 'THE MATRIX', currency: 'diamond', price: 200, color: '#00FF41', glow: 20, width: 7, shape: 'standard' },
   { id: 'onyx', name: 'ONYX SPIKE', currency: 'diamond', price: 350, color: '#000000', glow: 25, width: 8, shape: 'spiked' }, 
@@ -111,6 +113,11 @@ export const SKINS: Skin[] = [
   { id: 'reaper', name: 'SOUL REAPER', currency: 'diamond', price: 1000, color: '#4B0082', glow: 35, width: 9, shape: 'spiked' },
   { id: 'dragon_spike', name: 'DRAGON TOOTH', currency: 'diamond', price: 2500, color: '#FF0000', glow: 35, width: 12, shape: 'spiked' },
   { id: 'divine', name: 'DIVINE ENTITY', currency: 'diamond', price: 6000, color: '#FFFFFF', glow: 60, width: 15, shape: 'lightning' },
+  
+  // --- V2.0 PREMIUM DIAMOND SKINS ---
+  { id: 'astral_forged', name: 'ASTRAL FORGE', currency: 'diamond', price: 12000, color: '#00FFFF', glow: 45, width: 12, shape: 'lightning' },
+  { id: 'omega_core', name: 'OMEGA CORE', currency: 'diamond', price: 25000, color: '#FF00FF', glow: 60, width: 14, shape: 'binary' },
+  { id: 'god_mode', name: 'GOD MODE', currency: 'diamond', price: 50000, color: '#FFFFFF', glow: 100, width: 18, shape: 'gradient', primaryColor: '#FFFFFF', secondaryColor: '#FFD700' },
 ];
 
 export const WORLDS: World[] = [
@@ -132,7 +139,6 @@ export const POWER_UPS: PowerUp[] = [
   { id: 'precision_focus', name: 'PRECISION FOCUS', desc: 'Double hit-zone size for 5 taps.', price: 15, currency: 'diamond', color: '#FFCC00' },
 ];
 
-// --- 2.0 BOSSES & MEGA VAULTS ---
 export const BOSSES: Boss[] = [
   {
     id: 'boss_mainframe',
