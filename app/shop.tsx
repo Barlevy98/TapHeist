@@ -18,7 +18,7 @@ const adUnitId = __DEV__
   : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : 'ca-app-pub-9244809721385064/5943204821'); 
 
 const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
-  requestNonPersonalizedAdsOnly: false,
+  requestNonPersonalizedAdsOnly: true, // חובה לילדים: ללא מעקב מותאם אישית בחנות
 });
 
 export default function ShopScreen() {
