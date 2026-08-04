@@ -41,6 +41,14 @@
           "androidAppId": "ca-app-pub-9244809721385064~4915322850",
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "14.0"
+          }
+        }
       ]
     ],
     "experiments": {
