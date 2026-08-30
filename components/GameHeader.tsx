@@ -27,7 +27,6 @@ export default function GameHeader({
   freezeAnimStyle,
   focusTapsLeft,
   focusAnimStyle,
-  combo,
   isDirectionWarning,
   nearMissText,
   runDiamondsEarned,
@@ -82,13 +81,13 @@ export default function GameHeader({
         )}
       </View>
 
-      {/* V2.0 Boss Health Bar UI */}
+      {/* V2.0 Premium Boss Health Bar UI */}
       {gameState === 'BOSS_BATTLE' && activeBoss && (
         <View style={styles.bossHealthContainer} pointerEvents="none">
-          <Text style={[styles.bossName, { color: activeBoss.themeColor }]}>{activeBoss.name}</Text>
+          <Text style={[styles.bossName, { color: activeBoss.themeColor, textShadowColor: activeBoss.themeColor }]}>{activeBoss.name}</Text>
           <Text style={styles.bossHitsText}>SYSTEM INTEGRITY: {bossHitsLeft} HITS LEFT</Text>
           <View style={[styles.healthBarBg, { borderColor: activeBoss.themeColor }]}>
-            <View style={[styles.healthBarFill, { width: `${bossHealthPercent}%`, backgroundColor: activeBoss.themeColor }]} />
+            <View style={[styles.healthBarFill, { width: `${bossHealthPercent}%`, backgroundColor: activeBoss.themeColor, shadowColor: activeBoss.themeColor, shadowOpacity: 0.8, shadowRadius: 8 }]} />
           </View>
         </View>
       )}
@@ -121,13 +120,11 @@ export default function GameHeader({
         </View>
       )}
 
-      {(gameState === 'PLAYING' || gameState === 'RISK' || gameState === 'BOSS_BATTLE') && combo > 0 && (
-        <View style={styles.comboHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={[styles.comboText, { color: activeSkin.color }]} numberOfLines={1}>{combo} COMBO</Text>
-          </View>
-          {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
-          {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
+      {/* Warnings & Notifications (Combo moved to VaultRing) */}
+      {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && (isDirectionWarning || nearMissText) && (
+        <View style={styles.notificationsContainer}>
+          {isDirectionWarning && <Text style={styles.warningText}>⚠️ FLIP IMMINENT ⚠️</Text>}
+          {nearMissText && <Text style={styles.nearMissText}>{nearMissText}</Text>}
         </View>
       )}
     </>
@@ -150,15 +147,15 @@ const styles = StyleSheet.create({
   
   // V2.0 Boss Styles
   bossHealthContainer: { position: 'absolute', top: 90, width: '100%', alignItems: 'center', zIndex: 5 },
-  bossName: { fontSize: 22, fontWeight: '900', letterSpacing: 3, textShadowColor: '#000', textShadowRadius: 10, textShadowOffset: { width: 0, height: 0 } },
-  bossHitsText: { color: '#FFF', fontSize: 11, fontWeight: 'bold', marginTop: 2, marginBottom: 8, letterSpacing: 1 },
-  healthBarBg: { width: '60%', height: 12, backgroundColor: 'rgba(0,0,0,0.8)', borderWidth: 1, borderRadius: 6, overflow: 'hidden' },
+  bossName: { fontSize: 24, fontWeight: '900', letterSpacing: 3, textShadowRadius: 15, textShadowOffset: { width: 0, height: 0 } },
+  bossHitsText: { color: '#FFF', fontSize: 11, fontWeight: 'bold', marginTop: 4, marginBottom: 8, letterSpacing: 2 },
+  healthBarBg: { width: '65%', height: 14, backgroundColor: 'rgba(0,0,0,0.9)', borderWidth: 1.5, borderRadius: 8, overflow: 'hidden' },
   healthBarFill: { height: '100%' },
 
   activeBoostsHud: { position: 'absolute', top: 150, right: 30, alignItems: 'flex-end', gap: 10, zIndex: 15 },
   miniBoostIcon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.85)', padding: 8, borderRadius: 12, borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
-  comboHeader: { position: 'absolute', top: 150, width: '100%', alignItems: 'center', zIndex: 10 },
-  comboText: { fontSize: 22, fontWeight: '900', letterSpacing: 3, opacity: 0.8 }, 
-  warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', marginTop: 5, letterSpacing: 1 },
-  nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 8, letterSpacing: 2 },
+  
+  notificationsContainer: { position: 'absolute', top: 150, width: '100%', alignItems: 'center', zIndex: 10 },
+  warningText: { color: '#FF3B30', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 },
+  nearMissText: { color: '#FFCC00', fontSize: 18, fontWeight: '900', marginTop: 4, letterSpacing: 2 },
 });
