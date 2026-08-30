@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import React, { useEffect } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
 import Svg, { Circle, Polygon, Path, Defs, LinearGradient, Stop, Rect, G } from 'react-native-svg';
 import { GradientPointer } from './GradientPointer';
 
@@ -18,49 +18,61 @@ export default function VaultRing({
   pointerAnimatedStyle,
   activeSkin,
   currentRewardTier,
-  minigameOffsets = [],
-  minigameHits = [],
-  activeBoss
+  activeBoss,
+  combo,
+  isOverdrive
 }: any) {
   
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
   
-  // בקרב בוס אזור המטרה הוא לבן בוהק כדי לבלוט מעל צבעי המערכת. אחרת, צבע רגיל.
-  const blockColor = (gameState === 'BOSS_BATTLE' && activeBoss) 
-    ? '#FFFFFF' 
-    : (isDiamondTarget ? displayColor : '#00FF66');
+  const blockColor = isOverdrive 
+    ? '#FFD700' 
+    : (gameState === 'BOSS_BATTLE' && activeBoss) 
+      ? '#FFFFFF' 
+      : (isDiamondTarget ? displayColor : '#00FF66');
+
+  // V2.0 Combo Pop Animation
+  const comboScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (combo > 0) {
+      comboScale.value = withSequence(
+        withTiming(1.3, { duration: 80, easing: Easing.out(Easing.ease) }),
+        withTiming(1, { duration: 250, easing: Easing.bounce })
+      );
+    }
+  }, [combo]);
+
+  const comboAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: comboScale.value }]
+  }));
 
   return (
     <View style={[styles.vaultContainer, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
       
+      {/* V2.0 Clean Combo Counter - Centered above the ring */}
+      {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && combo > 0 && (
+        <Animated.View style={[styles.comboContainer, comboAnimatedStyle]}>
+          <Text style={[styles.comboNumber, { color: activeSkin.color }]}>{combo}</Text>
+          <Text style={[styles.comboLabel, { color: activeSkin.color }]}>COMBO</Text>
+        </Animated.View>
+      )}
+
       {/* טבעת הכספת הבסיסית */}
       <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.svg}>
         <Circle cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={activeWorld.vaultRing} strokeWidth={STROKE_WIDTH} fill="none" />
       </Svg>
 
-      {/* אזור המטרה / מטרות המיני-גיימ */}
-      <Animated.View style={[styles.svg, targetOpacityStyle]} pointerEvents="none">
+      {/* אזור המטרה */}
+      {/* V2.0 Fix: Removes targetOpacityStyle during BOSS_BATTLE so it never vanishes */}
+      <Animated.View style={[styles.svg, gameState === 'BOSS_BATTLE' ? {} : targetOpacityStyle]} pointerEvents="none">
         <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
-          
-          {gameState === 'MINIGAME' && minigameOffsets.length > 0 ? (
-            minigameOffsets.map((offset: number, index: number) => (
-              <Circle
-                key={`minigame-target-${index}`}
-                cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} 
-                stroke={minigameHits[index] ? 'rgba(255,255,255,0.1)' : '#FF3B30'}
-                strokeWidth={STROKE_WIDTH} fill="none" 
-                strokeDasharray={strokeDasharray} strokeDashoffset={offset}
-                origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
-              />
-            ))
-          ) : (
-            <Circle
-              cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={blockColor}
-              strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
-              origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
-            />
-          )}
+          <Circle
+            cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={blockColor}
+            strokeWidth={STROKE_WIDTH} fill="none" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset}
+            origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`} rotation="-90"
+          />
 
           {isDiamondTarget && (gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && (
             <G x={CIRCLE_SIZE / 2} y={CIRCLE_SIZE / 2 - radius}>
@@ -130,4 +142,8 @@ const styles = StyleSheet.create({
   hitFlashOverlay: { position: 'absolute', backgroundColor: '#00FF66' },
   pointerContainer: { position: 'absolute', alignItems: 'center' },
   pointer: { borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
+  
+  comboContainer: { position: 'absolute', top: -65, alignItems: 'center', width: '100%', zIndex: 5 },
+  comboNumber: { fontSize: 32, fontWeight: '900', letterSpacing: 1, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10, textShadowColor: '#000' },
+  comboLabel: { fontSize: 10, fontWeight: 'bold', letterSpacing: 3, marginTop: -2, opacity: 0.8 },
 });

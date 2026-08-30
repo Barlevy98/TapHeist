@@ -58,7 +58,7 @@ const adUnitId = __DEV__
   : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/8775411934' : 'ca-app-pub-9244809721385064/5943204821');
 
 const rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
-  requestNonPersonalizedAdsOnly: true, // חובה לילדים: ללא מעקב מותאם אישית
+  requestNonPersonalizedAdsOnly: true,
 });
 
 const interstitialAdUnitId = __DEV__
@@ -66,7 +66,7 @@ const interstitialAdUnitId = __DEV__
   : (Platform.OS === 'ios' ? 'ca-app-pub-9244809721385064/1265725642' : 'ca-app-pub-9244809721385064/1265725642');
 
 const interstitialAd = InterstitialAd.createForAdRequest(interstitialAdUnitId, {
-  requestNonPersonalizedAdsOnly: true, // חובה לילדים: ללא מעקב מותאם אישית
+  requestNonPersonalizedAdsOnly: true,
 });
 
 export default function GameScreen() {
@@ -101,7 +101,6 @@ export default function GameScreen() {
   const [showRiskTutorial, setShowRiskTutorial] = useState(false);
   const [nearMissText, setNearMissText] = useState<string | null>(null);
   
-  // V2.0 Firewall Scramble Warning
   const [firewallWarning, setFirewallWarning] = useState<string | null>(null);
   const firewallWarningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -120,6 +119,9 @@ export default function GameScreen() {
   const [totalHeists, setTotalHeists] = useState(0);
   const [gamesSinceFirewall, setGamesSinceFirewall] = useState(0);
   const [isFirewallActive, setIsFirewallActive] = useState(false);
+  
+  // V2.0 System Overdrive State
+  const [overdriveHitsLeft, setOverdriveHitsLeft] = useState(0);
 
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
   const [gamesSinceAd, setGamesSinceAd] = useState(0);
@@ -127,32 +129,35 @@ export default function GameScreen() {
   const [startRank, setStartRank] = useState('SCRIPT KIDDIE');
   const [rankUpModal, setRankUpModal] = useState<any>(null);
 
-  // V2.0 Skills States
   const [zoneBonus, setZoneBonus] = useState(0);
   const [diamondBonus, setDiamondBonus] = useState(0);
   const [startMultBonus, setStartMultBonus] = useState(1);
 
-  // V2.0 Minigame States
-  const [minigameAngles, setMinigameAngles] = useState<number[]>([]);
-  const [minigameHits, setMinigameHits] = useState<boolean[]>([]);
-  
   // V2.0 Boss Battle States
   const [activeBoss, setActiveBoss] = useState<Boss | null>(null);
   const [bossHitsLeft, setBossHitsLeft] = useState(0);
   const [pendingBoss, setPendingBoss] = useState<Boss | null>(null);
 
-  // Base size with percentage increase from skills
   const expandedZoneSize = ZONE_SIZE * (1 + (zoneBonus / 100));
+  const bossHealthProgress = activeBoss ? bossHitsLeft / activeBoss.targetHits : 1;
 
-  const activeZoneSize = isFirewallActive 
-    ? Math.max(15, expandedZoneSize * 0.5) 
-    : (focusTapsLeft > 0 ? expandedZoneSize * 2 : expandedZoneSize);
+  // V2.0: Shrinking hit zone based on Boss health
+  let activeZoneSize = expandedZoneSize;
+  if (isFirewallActive) activeZoneSize = Math.max(15, expandedZoneSize * 0.5);
+  else if (focusTapsLeft > 0) activeZoneSize = expandedZoneSize * 2;
+  else if (gameState === 'BOSS_BATTLE' && activeBoss) {
+    activeZoneSize = Math.max(12, expandedZoneSize * (0.35 + 0.65 * bossHealthProgress));
+  }
 
-  const displayWorld = isFirewallActive 
-    ? { ...activeWorld, bg: '#1A0000', vaultRing: '#FFCC00', textPrimary: '#FFCC00', textSecondary: '#FF3B30' } 
-    : (gameState === 'BOSS_BATTLE' && activeBoss 
-        ? { ...activeWorld, bg: '#0A0000', vaultRing: activeBoss.themeColor, textPrimary: activeBoss.themeColor, textSecondary: '#FFF' } 
-        : activeWorld);
+  const isOverdrive = overdriveHitsLeft > 0;
+  
+  const displayWorld = isOverdrive
+    ? { ...activeWorld, bg: '#1A1A00', vaultRing: '#FFD700', textPrimary: '#FFCC00', textSecondary: '#FFF' }
+    : isFirewallActive 
+      ? { ...activeWorld, bg: '#1A0000', vaultRing: '#FFCC00', textPrimary: '#FFCC00', textSecondary: '#FF3B30' } 
+      : (gameState === 'BOSS_BATTLE' && activeBoss 
+          ? { ...activeWorld, bg: '#0A0000', vaultRing: activeBoss.themeColor, textPrimary: activeBoss.themeColor, textSecondary: '#FFF' } 
+          : activeWorld);
 
   const currentRewardTier = getRewardTier(combo + 1, activeWorld.id);
 
@@ -201,9 +206,10 @@ export default function GameScreen() {
     
     if (isFirewallActive) finalDuration *= 0.65; 
     
-    // Boss Battle Speed Modifier
+    // V2.0 Boss Acceleration based on remaining health
     if (gameState === 'BOSS_BATTLE' && activeBoss) {
-      finalDuration *= activeBoss.speedModifier;
+      const prog = bossHitsLeft / activeBoss.targetHits;
+      finalDuration *= activeBoss.speedModifier * (0.6 + 0.4 * prog);
     }
     
     if (frozen) finalDuration *= 2.5; 
@@ -251,7 +257,6 @@ export default function GameScreen() {
     }
   }, [pendingRevive]);
 
-  // האזנה לחזרה למסך הראשי
   useFocusEffect(
     useCallback(() => {
       const initFocus = async () => {
@@ -260,7 +265,6 @@ export default function GameScreen() {
         if (!rewardedAd.loaded) rewardedAd.load();
         if (!interstitialAd.loaded) interstitialAd.load();
 
-        // בדיקה אם חזרנו ממסך הבוסים עם פקודת פריצה
         const bossId = await SecureStore.getItemAsync('pending_boss_battle');
         if (bossId) {
           await SecureStore.deleteItemAsync('pending_boss_battle');
@@ -272,7 +276,6 @@ export default function GameScreen() {
     }, [])
   );
 
-  // מפעיל את הבוס ברגע שהסטייטים הספיקו להתעדכן והמסך מוכן
   useEffect(() => {
     if (pendingBoss) {
       startBossBattle(pendingBoss);
@@ -288,8 +291,6 @@ export default function GameScreen() {
       const savedWorldId = await SecureStore.getItemAsync(STORAGE_KEYS.equippedWorld);
       const tutSeen = await SecureStore.getItemAsync(STORAGE_KEYS.diamondTutorial);
       const coreSeen = await SecureStore.getItemAsync(STORAGE_KEYS.coreTutorial);
-      const unlockedSkinsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.unlockedSkins);
-      const unlockedWorldsRaw = await SecureStore.getItemAsync(STORAGE_KEYS.unlockedWorlds);
       
       const savedMaxCombo = await SecureStore.getItemAsync(STORAGE_KEYS.maxCombo);
       const savedTotalHeists = await SecureStore.getItemAsync(STORAGE_KEYS.totalHeists);
@@ -297,8 +298,6 @@ export default function GameScreen() {
 
       const currentBank = savedBank ? Number(savedBank) : 0;
       const currentDiamonds = savedDiamonds ? Number(savedDiamonds) : 0;
-      const uSkins = unlockedSkinsRaw ? JSON.parse(unlockedSkinsRaw) : ['white'];
-      const uWorlds = unlockedWorldsRaw ? JSON.parse(unlockedWorldsRaw) : ['darknet'];
 
       if (savedBank) setBank(currentBank);
       if (savedDiamonds) setDiamonds(currentDiamonds);
@@ -318,7 +317,6 @@ export default function GameScreen() {
       if (savedTotalHeists) setTotalHeists(Number(savedTotalHeists));
       if (savedFirewallGames) setGamesSinceFirewall(Number(savedFirewallGames));
 
-      setMainNextUnlock(getNextUnlock(currentBank, currentDiamonds, uSkins, uWorlds));
       setInventory(await getPowerUpInventory());
       setMissionBadge(await countClaimableMissions());
 
@@ -474,6 +472,7 @@ export default function GameScreen() {
     setHasRevivedThisRun(false); 
     setActiveBoss(null);
     setBossHitsLeft(0);
+    setOverdriveHitsLeft(0);
     
     setStartRank(getHackerRank(totalHeists, lifetimeMaxCombo));
 
@@ -482,9 +481,6 @@ export default function GameScreen() {
     setIsFrozen(false);
     isFrozenRef.current = false;
     
-    setMinigameAngles([]);
-    setMinigameHits([]);
-
     cancelAnimation(shieldScale); shieldScale.value = 1;
     cancelAnimation(freezeScale); freezeScale.value = 1;
     cancelAnimation(focusScale); focusScale.value = 1;
@@ -506,15 +502,6 @@ export default function GameScreen() {
 
     closeInventory();
     
-    if (triggerFirewall) {
-      setGameState('PLAYING');
-      setTimeout(() => {
-        randomizeTarget();
-        startRotation(getSpeedDuration(0), 1);
-      }, 0);
-      return; 
-    }
-
     setGameState('PLAYING');
     setTimeout(() => {
       randomizeTarget();
@@ -522,7 +509,6 @@ export default function GameScreen() {
     }, 0);
   };
 
-  // --- V2.0 BOSS BATTLE INITIALIZATION ---
   const startBossBattle = (boss: Boss) => {
     setActiveBoss(boss);
     setBossHitsLeft(boss.targetHits);
@@ -541,8 +527,7 @@ export default function GameScreen() {
     setFocusTapsLeft(0);
     setIsFrozen(false);
     isFrozenRef.current = false;
-    setMinigameAngles([]);
-    setMinigameHits([]);
+    setOverdriveHitsLeft(0);
     setIsFirewallActive(false);
     
     closeInventory();
@@ -690,6 +675,15 @@ export default function GameScreen() {
   };
 
   const processGameOver = async () => {
+    // V2.0 Boss Economy Fix - 0 rewards on loss
+    if (gameState === 'BOSS_BATTLE') {
+      setConsolationPrize(0);
+      closeInventory();
+      targetOpacity.value = 1; 
+      setGameState('GAMEOVER');
+      return; 
+    }
+
     const calculatedPrize = Math.floor(score * FAIL_REWARD_FRACTION);
     setConsolationPrize(calculatedPrize);
     updateAndPersistBank(calculatedPrize);
@@ -730,8 +724,7 @@ export default function GameScreen() {
     if (gameState === 'START' || gameState === 'CASHED_OUT' || gameState === 'BOSS_DEFEATED') { await requestStartGame(); return; }
     if (gameState === 'TUTORIAL') { setGameState('PLAYING'); startRotation(getSpeedDuration(combo), 1); return; }
     
-    // Ignore taps during minigame transition to prevent bugs
-    if (gameState !== 'PLAYING' && gameState !== 'MINIGAME' && gameState !== 'BOSS_BATTLE') return;
+    if (gameState !== 'PLAYING' && gameState !== 'BOSS_BATTLE') return;
     
     if (isInventoryOpen) { closeInventory(); return; }
 
@@ -741,79 +734,6 @@ export default function GameScreen() {
 
     const normalizedCurrentAngle = ((currentRawAngle % 360) + 360) % 360;
 
-    // --- MINIGAME HIT LOGIC ---
-    if (gameState === 'MINIGAME') {
-      let hitIndex = -1;
-      const currentHitBuffer = HIT_BUFFER + 1.5; 
-      
-      for (let i = 0; i < minigameAngles.length; i++) {
-        if (!minigameHits[i]) {
-          const targetCenter = minigameAngles[i] + activeZoneSize / 2;
-          let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
-          if (angleDiff > 180) angleDiff = 360 - angleDiff;
-          
-          if (angleDiff <= (activeZoneSize / 2) + currentHitBuffer) {
-            hitIndex = i;
-            break;
-          }
-        }
-      }
-
-      if (hitIndex !== -1) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        flashHit();
-        
-        const newHits = [...minigameHits];
-        newHits[hitIndex] = true;
-        setMinigameHits(newHits);
-
-        setCombo((c) => c + 1);
-        setRunMaxCombo((c) => Math.max(c, combo + 1));
-        
-        if (newHits.every(h => h)) {
-          showFirewallWarning('SYSTEM BREACHED! +$$$');
-          pulseSuccess();
-          
-          const bonusCash = 25000 * multiplier * startMultBonus;
-          const bonusDiamonds = 15;
-          updateAndPersistBank(bonusCash);
-          updateAndPersistDiamonds(bonusDiamonds);
-          setScore((s) => s + bonusCash);
-          setRunDiamondsEarned((d) => d + bonusDiamonds);
-          playScoreAnimation(bonusCash);
-
-          setGameState('MINIGAME_TRANSITION');
-          setTimeout(() => {
-            setGameState('PLAYING');
-            randomizeTarget();
-            startRotation(getSpeedDuration(combo + 1), direction);
-          }, 1200);
-
-        } else {
-          startRotation(900, direction); 
-        }
-      } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        if (isShieldActive) {
-          setIsShieldActive(false);
-          cancelAnimation(shieldScale); shieldScale.value = 1;
-          flashMiss();
-          showNearMiss('🛡️ SHIELD BROKEN!');
-          const nextDirection = direction === 1 ? -1 : 1;
-          setDirection(nextDirection);
-          startRotation(900, nextDirection);
-          return;
-        }
-
-        flashMiss();
-        showFirewallWarning('ACCESS DENIED');
-        await processGameOver();
-      }
-      return;
-    }
-
-    // --- NORMAL PLAY & BOSS BATTLE HIT LOGIC ---
     const targetCenter = targetAngle + activeZoneSize / 2;
     let angleDiff = Math.abs(normalizedCurrentAngle - targetCenter);
     if (angleDiff > 180) angleDiff = 360 - angleDiff;
@@ -829,6 +749,10 @@ export default function GameScreen() {
         if (focusTapsLeft - 1 === 0) { cancelAnimation(focusScale); focusScale.value = 1; }
       }
 
+      if (overdriveHitsLeft > 0) {
+        setOverdriveHitsLeft(prev => prev - 1);
+      }
+
       const newCombo = combo + 1;
       setCombo(newCombo);
       setRunMaxCombo((c) => Math.max(c, newCombo));
@@ -839,8 +763,9 @@ export default function GameScreen() {
       
       flashHit();
 
-      // --- BOSS BATTLE WIN CONDITION ---
+      // --- V2.0 BOSS BATTLE WIN CONDITION ---
       if (gameState === 'BOSS_BATTLE' && activeBoss) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         const remaining = bossHitsLeft - 1;
         setBossHitsLeft(remaining);
         
@@ -858,6 +783,15 @@ export default function GameScreen() {
           setRunDiamondsEarned(d => d + bonusDiamonds);
           playScoreAnimation(bonusCash);
           
+          // Mark boss as defeated to unlock the next one
+          SecureStore.getItemAsync('vault_defeated_bosses').then((savedDefeated) => {
+            const defeatedArr = savedDefeated ? JSON.parse(savedDefeated) : [];
+            if (!defeatedArr.includes(activeBoss.id)) {
+              defeatedArr.push(activeBoss.id);
+              SecureStore.setItemAsync('vault_defeated_bosses', JSON.stringify(defeatedArr));
+            }
+          });
+          
           setGameState('BOSS_DEFEATED');
           return;
         }
@@ -865,18 +799,19 @@ export default function GameScreen() {
 
       const tier = getRewardTier(newCombo, activeWorld.id);
       const diamondGain = tier.gain;
+      const currentMultiplier = isOverdrive ? multiplier * 3 : multiplier;
 
       if (isFirewallActive || gameState === 'BOSS_BATTLE') {
-        await hapticNotification(Haptics.NotificationFeedbackType.Success);
+        if (!activeBoss) await hapticNotification(Haptics.NotificationFeedbackType.Success);
         
         if (isDiamondTarget) {
           updateAndPersistDiamonds(3);
           setRunDiamondsEarned((d) => d + 3);
-          const reward = Math.floor(BASE_REWARD * multiplier);
+          const reward = Math.floor(BASE_REWARD * currentMultiplier);
           setScore((s) => s + reward);
           playScoreAnimation(reward);
         } else {
-          const reward = Math.floor(BASE_REWARD * (multiplier * 4));
+          const reward = Math.floor(BASE_REWARD * (currentMultiplier * 4));
           setScore((s) => s + reward);
           playScoreAnimation(reward);
         }
@@ -886,25 +821,29 @@ export default function GameScreen() {
         setRunDiamondsEarned((d) => d + diamondGain);
         playScoreAnimation(diamondGain);
       } else {
-        await hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
+        await hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
         const worldMultiplier = activeWorld.id === 'poh_vault' ? 5 : 1;
         const retroMult = activeWorld.id === 'retro' ? 1.2 : 1;
-        const reward = Math.floor(BASE_REWARD * multiplier * worldMultiplier * retroMult);
+        const reward = Math.floor(BASE_REWARD * currentMultiplier * worldMultiplier * retroMult);
         
         setScore((s) => s + reward);
         playScoreAnimation(reward);
       }
 
+      // Bonus drops during overdrive
+      if (isOverdrive && gameState !== 'BOSS_BATTLE') {
+        updateAndPersistDiamonds(1);
+        setRunDiamondsEarned(d => d + 1);
+      }
+
       let nextDirection = direction;
       let nextDuration = getSpeedDuration(newCombo);
 
-      // Boss Battle & Firewall Scramble Mechanics
+      // V2.0 Boss Mechanics (Removed random scrambles)
       if (gameState === 'BOSS_BATTLE' && activeBoss) {
-        if (newCombo > 0 && Math.random() < activeBoss.scrambleChance) {
-          showFirewallWarning(Math.random() > 0.5 ? '⚠️ DEFENSIVE SHIFT ⚠️' : '⚠️ SPEED GLITCH ⚠️');
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); 
-          nextDirection = Math.random() > 0.5 ? 1 : -1;
-          nextDuration *= (Math.random() > 0.5 ? 0.7 : 1.3); 
+        // Change direction every 5 hits consistently
+        if (newCombo % 5 === 0) {
+          nextDirection = direction === 1 ? -1 : 1;
           setDirection(nextDirection);
         }
       } else if (isFirewallActive) {
@@ -925,24 +864,11 @@ export default function GameScreen() {
       const riskInterval = activeWorld.id === 'blood' ? 5 : 10;
       
       if (gameState !== 'BOSS_BATTLE') {
+        // V2.0 SYSTEM OVERDRIVE (Replaces Mini-game)
         if (newCombo > 0 && newCombo % 40 === 0) {
-          cancelAnimation(rotation);
-          setGameState('MINIGAME_TRANSITION');
-          showFirewallWarning('🔓 CRACKING CODE... 🔓');
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          
-          const angles = [];
-          for(let i=0; i<3; i++) {
-            angles.push(Math.floor(Math.random() * (360 - activeZoneSize)));
-          }
-          setMinigameAngles(angles);
-          setMinigameHits([false, false, false]);
-
-          setTimeout(() => {
-            setGameState('MINIGAME');
-            startRotation(900, direction); 
-          }, 1500);
-          return;
+          setOverdriveHitsLeft(10);
+          showFirewallWarning('⚡ SYSTEM OVERDRIVE ⚡');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } else if (newCombo % riskInterval === 0 && activeWorld.id !== 'diamond_world') { 
           if (activeWorld.id === 'cyber') {
             const newMult = multiplier * 2;
@@ -991,10 +917,9 @@ export default function GameScreen() {
   const strokeDasharray = `${(activeZoneSize / 360) * circumference} ${circumference}`;
   const strokeDashoffset = -(targetAngle / 360) * circumference;
   
-  const minigameOffsets = minigameAngles.map(a => -(a / 360) * circumference);
   const isDirectionWarning = gameState === 'PLAYING' && combo > 0 && (combo + 1) % 5 === 0;
   
-  const canTapVault = ['PLAYING', 'START', 'CASHED_OUT', 'TUTORIAL', 'MINIGAME', 'BOSS_BATTLE', 'BOSS_DEFEATED'].includes(gameState);
+  const canTapVault = ['PLAYING', 'START', 'CASHED_OUT', 'TUTORIAL', 'BOSS_BATTLE', 'BOSS_DEFEATED'].includes(gameState);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: displayWorld.bg }]}>
@@ -1042,9 +967,9 @@ export default function GameScreen() {
             pointerAnimatedStyle={pointerAnimatedStyle}
             activeSkin={activeSkin}
             currentRewardTier={currentRewardTier} 
-            minigameOffsets={minigameOffsets}
-            minigameHits={minigameHits}
             activeBoss={activeBoss}
+            combo={combo}
+            isOverdrive={isOverdrive}
           />
         </Pressable>
 
