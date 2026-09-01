@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    name: Trigger EAS Build
+    name: Trigger EAS Build & Submit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -24,7 +24,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           
       - name: Setup Expo and EAS
@@ -36,10 +36,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      - name: Build iOS
+      - name: Build and Submit iOS
         if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' }}
-        run: eas build --platform ios --non-interactive
+        run: eas build --platform ios --non-interactive --auto-submit
         
-      - name: Build Android
+      - name: Build and Submit Android
         if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all' }}
-        run: eas build --platform android --non-interactive
+        run: eas build --platform android --non-interactive --auto-submit
