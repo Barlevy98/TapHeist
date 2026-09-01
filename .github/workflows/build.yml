@@ -40,6 +40,6 @@ jobs:
         if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' }}
         run: eas build --platform ios --non-interactive --auto-submit
         
-      - name: Build and Submit Android
+      - name: Build Android
         if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all' }}
-        run: eas build --platform android --non-interactive --auto-submit
+        run: eas build --platform android --non-interactive
