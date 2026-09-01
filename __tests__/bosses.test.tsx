@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
-import BossesScreen from './bosses';
+import BossesScreen from '../app/bosses'
 import * as SecureStore from 'expo-secure-store';
 
 // העדכון הקריטי: דימוי מחזור חיים תקין בעזרת React.useEffect
