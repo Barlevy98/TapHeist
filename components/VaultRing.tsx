@@ -26,13 +26,20 @@ export default function VaultRing({
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
   
-  const blockColor = isOverdrive 
-    ? '#FFD700' 
-    : (gameState === 'BOSS_BATTLE' && activeBoss) 
-      ? '#FFFFFF' 
-      : (isDiamondTarget ? displayColor : '#00FF66');
+  let blockColor = '#00FF66';
+  if (gameState === 'BOSS_BATTLE' && activeBoss) {
+    const ringCol = (activeBoss.themeColor || '').toUpperCase();
+    if (ringCol === '#FFD700' || ringCol === 'GOLD') blockColor = '#FF3B30'; 
+    else if (ringCol === '#FF3B30' || ringCol === 'RED') blockColor = '#FFFFFF'; 
+    else if (ringCol === '#00FFFF' || ringCol === 'CYAN') blockColor = '#000000'; 
+    else if (ringCol === '#000000' || ringCol === 'BLACK') blockColor = '#FFFFFF'; 
+    else blockColor = '#FFFFFF'; 
+  } else if (isOverdrive) {
+    blockColor = '#FFD700'; 
+  } else if (isDiamondTarget) {
+    blockColor = displayColor;
+  }
 
-  // V2.0 Combo Pop Animation
   const comboScale = useSharedValue(1);
 
   useEffect(() => {
@@ -51,21 +58,20 @@ export default function VaultRing({
   return (
     <View style={[styles.vaultContainer, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
       
-      {/* V2.0 Clean Combo Counter - Centered above the ring */}
       {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && combo > 0 && (
         <Animated.View style={[styles.comboContainer, comboAnimatedStyle]}>
+          {isOverdrive && (
+            <Text style={styles.overdriveText}>⚡ MINI GAME ⚡{"\n"}More money for every HIT!</Text>
+          )}
           <Text style={[styles.comboNumber, { color: activeSkin.color }]}>{combo}</Text>
           <Text style={[styles.comboLabel, { color: activeSkin.color }]}>COMBO</Text>
         </Animated.View>
       )}
 
-      {/* טבעת הכספת הבסיסית */}
       <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.svg}>
         <Circle cx={CIRCLE_SIZE / 2} cy={CIRCLE_SIZE / 2} r={radius} stroke={activeWorld.vaultRing} strokeWidth={STROKE_WIDTH} fill="none" />
       </Svg>
 
-      {/* אזור המטרה */}
-      {/* V2.0 Fix: Removes targetOpacityStyle during BOSS_BATTLE so it never vanishes */}
       <Animated.View style={[styles.svg, gameState === 'BOSS_BATTLE' ? {} : targetOpacityStyle]} pointerEvents="none">
         <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
           <Circle
@@ -82,10 +88,8 @@ export default function VaultRing({
         </Svg>
       </Animated.View>
 
-      {/* הבזק פגיעה מוצלחת */}
       <Animated.View pointerEvents="none" style={[styles.hitFlashOverlay, hitFlashStyle, { width: CIRCLE_SIZE, height: CIRCLE_SIZE, borderRadius: CIRCLE_SIZE / 2 }]} />
 
-      {/* המחוג המסתובב והסקינים */}
       <Animated.View style={[styles.pointerContainer, pointerAnimatedStyle, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
         {activeSkin.shape === 'gradient' && (
           <GradientPointer size={CIRCLE_SIZE} primaryColor={activeSkin.primaryColor} secondaryColor={activeSkin.secondaryColor} rotation={0} />
@@ -143,7 +147,8 @@ const styles = StyleSheet.create({
   pointerContainer: { position: 'absolute', alignItems: 'center' },
   pointer: { borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
   
-  comboContainer: { position: 'absolute', top: -65, alignItems: 'center', width: '100%', zIndex: 5 },
+  comboContainer: { position: 'absolute', top: -75, alignItems: 'center', width: '100%', zIndex: 5 },
+  overdriveText: { color: '#FFCC00', fontSize: 13, fontWeight: '900', textAlign: 'center', marginBottom: 6, letterSpacing: 1, textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
   comboNumber: { fontSize: 32, fontWeight: '900', letterSpacing: 1, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10, textShadowColor: '#000' },
   comboLabel: { fontSize: 10, fontWeight: 'bold', letterSpacing: 3, marginTop: -2, opacity: 0.8 },
 });

@@ -16,7 +16,7 @@ Tap Heist combines a simple tap mechanic with layered progression, cosmetics, an
 
 ## Current Release
 
-- Version 1.4.1 is live on the App Store.
+- Version 2.0 is live on the App Store.
 - The game includes a full progression loop with missions, weekly challenges, prestige offers, and a large cosmetics catalog.
 - The experience is designed around short, replayable runs with reward tiers, risk decisions, and special worlds.
 

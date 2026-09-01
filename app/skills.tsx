@@ -80,7 +80,6 @@ export default function SkillsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.bankContainer}>
             <Text style={styles.bankLabel}>YOUR ASSETS</Text>
@@ -109,7 +108,6 @@ export default function SkillsScreen() {
             return (
               <View key={skill.id} style={styles.skillCard}>
                 
-                {/* Skill Header */}
                 <View style={styles.skillHeader}>
                   <Text style={styles.skillIcon}>{skill.icon}</Text>
                   <View style={styles.skillTitleContainer}>
@@ -120,7 +118,6 @@ export default function SkillsScreen() {
                 
                 <Text style={styles.skillDesc}>{skill.desc}</Text>
 
-                {/* Progress Indicators */}
                 <View style={styles.progressContainer}>
                   {Array.from({ length: skill.maxLevel }).map((_, index) => (
                     <View 
@@ -133,7 +130,6 @@ export default function SkillsScreen() {
                   ))}
                 </View>
 
-                {/* Stats & Upgrade Button */}
                 <View style={styles.actionRow}>
                   <View style={styles.statsContainer}>
                     <Text style={styles.statCurrent}>
@@ -154,10 +150,7 @@ export default function SkillsScreen() {
                     {isMaxed ? (
                       <Text style={styles.upgradeBtnTextMax}>MAXED</Text>
                     ) : (
-                      <Text style={[
-                        styles.upgradeBtnText, 
-                        { color: nextLevelDef?.currency === 'diamond' ? '#00FFFF' : '#000' }
-                      ]}>
+                      <Text style={styles.upgradeBtnText}>
                         UPGRADE ({nextLevelDef?.currency === 'diamond' ? `💎 ${nextLevelDef?.cost.toLocaleString()}` : `$${nextLevelDef?.cost.toLocaleString()}`})
                       </Text>
                     )}
@@ -168,14 +161,12 @@ export default function SkillsScreen() {
           })}
         </ScrollView>
 
-        {/* Footer */}
         <View style={styles.footer}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>BACK TO MENU</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Error Modal */}
         {errorModal.visible && (
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>

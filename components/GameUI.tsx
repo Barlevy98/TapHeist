@@ -39,6 +39,11 @@ export default function GameUI({
 }: any) {
   const router = useRouter();
 
+  // בדיקה אם אנחנו בסקין בהיר כדי למלא את הכפתורים בצבע כהה
+  const isLightWorld = activeWorld.id === 'white' || activeWorld.bg === '#FFFFFF' || activeWorld.bg === '#FFF';
+  const buttonBg = isLightWorld ? '#111111' : 'transparent';
+  const dynamicBorderWidth = isLightWorld ? 2 : 1;
+
   const renderRunStats = () => (
     <Text style={styles.runStatsText} numberOfLines={1}>
       Run: {runMaxCombo} combo · x{formatNumber(multiplier)} peak · 💎 {runDiamondsEarned} this heist
@@ -70,27 +75,25 @@ export default function GameUI({
             )}
 
             <View style={styles.menuRow}>
-              {/* --- CYBER CORE BUTTON --- */}
-              <TouchableOpacity onPress={() => router.push('../skills')} style={[styles.menuButton, { borderColor: '#00FFFF', backgroundColor: 'rgba(0,255,255,0.1)' }]}>
+              <TouchableOpacity onPress={() => router.push('../skills')} style={[styles.menuButton, { borderColor: '#00FFFF', backgroundColor: isLightWorld ? '#111' : 'rgba(0,255,255,0.1)', borderWidth: dynamicBorderWidth }]}>
                 <Text style={[styles.menuButtonText, { color: '#00FFFF' }]}>CYBER CORE</Text>
               </TouchableOpacity>
               
-              {/* --- MEGA VAULTS BUTTON (Fixed Route) --- */}
-              <TouchableOpacity onPress={() => router.push('../bosses')} style={[styles.menuButton, { borderColor: '#FF00FF', backgroundColor: 'rgba(255,0,255,0.1)' }]}>
+              <TouchableOpacity onPress={() => router.push('../bosses')} style={[styles.menuButton, { borderColor: '#FF00FF', backgroundColor: isLightWorld ? '#111' : 'rgba(255,0,255,0.1)', borderWidth: dynamicBorderWidth }]}>
                 <Text style={[styles.menuButtonText, { color: '#FF00FF' }]}>MEGA VAULTS</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity onPress={() => router.push('/shop')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
+              <TouchableOpacity onPress={() => router.push('/shop')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary, backgroundColor: buttonBg, borderWidth: dynamicBorderWidth }]}>
                 <Text style={styles.menuButtonText}>SHOP</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/missions')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
+              <TouchableOpacity onPress={() => router.push('/missions')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary, backgroundColor: buttonBg, borderWidth: dynamicBorderWidth }]}>
                 <Text style={styles.menuButtonText}>MISSIONS</Text>
                 {missionBadge > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{missionBadge}</Text></View>}
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/stats' as any)} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
+              <TouchableOpacity onPress={() => router.push('/stats' as any)} style={[styles.menuButton, { borderColor: activeWorld.textSecondary, backgroundColor: buttonBg, borderWidth: dynamicBorderWidth }]}>
                 <Text style={styles.menuButtonText}>STATS</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/settings')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary }]}>
+              <TouchableOpacity onPress={() => router.push('/settings')} style={[styles.menuButton, { borderColor: activeWorld.textSecondary, backgroundColor: buttonBg, borderWidth: dynamicBorderWidth }]}>
                 <Text style={styles.menuButtonText}>SETTINGS</Text>
               </TouchableOpacity>
             </View>
@@ -142,7 +145,6 @@ export default function GameUI({
           </View>
         )}
 
-        {/* --- V2.0 Boss Defeated Screen --- */}
         {gameState === 'BOSS_DEFEATED' && activeBoss && (
           <Animated.View style={[styles.gameOverContainer, successPulseStyle]}>
             <Text style={[styles.successText, { color: activeBoss.themeColor, fontSize: 30 }]}>SYSTEM COMPROMISED</Text>
@@ -237,7 +239,6 @@ export default function GameUI({
         </View>
       )}
 
-      {/* --- V2.0 Scramble Warning Overlay --- */}
       {firewallWarning && (gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && (
         <View style={styles.scrambleOverlay} pointerEvents="none">
           <View style={styles.scrambleBox}>
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
   
   mainNextUnlockText: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold', marginBottom: 20, letterSpacing: 1, textTransform: 'uppercase' },
   menuRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 16 },
-  menuButton: { backgroundColor: 'transparent', borderWidth: 1, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', position: 'relative' },
+  menuButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', position: 'relative' },
   menuButtonText: { color: '#FFCC00', fontWeight: 'bold', fontSize: 13, letterSpacing: 1 },
   badge: { position: 'absolute', top: -6, right: -6, backgroundColor: '#FF3B30', minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
@@ -313,30 +314,7 @@ const styles = StyleSheet.create({
   dangerButton: { backgroundColor: '#FF3B30', paddingVertical: 15, borderRadius: 30, width: '100%', alignItems: 'center' },
   dangerButtonText: { color: '#FFF', fontWeight: '900', fontSize: 15 },
 
-  // --- V2.0 Scramble Warning Styles ---
-  scrambleOverlay: {
-    position: 'absolute',
-    top: '25%', // Places it slightly above the center ring
-    width: '100%',
-    alignItems: 'center',
-    zIndex: 150,
-  },
-  scrambleBox: {
-    backgroundColor: 'rgba(255, 0, 0, 0.15)',
-    borderWidth: 2,
-    borderColor: '#FF3B30',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  scrambleText: {
-    color: '#FF3B30',
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 2,
-    textAlign: 'center',
-    textShadowColor: '#FF3B30',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  }
+  scrambleOverlay: { position: 'absolute', top: '25%', width: '100%', alignItems: 'center', zIndex: 150 },
+  scrambleBox: { backgroundColor: 'rgba(255, 0, 0, 0.15)', borderWidth: 2, borderColor: '#FF3B30', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12 },
+  scrambleText: { color: '#FF3B30', fontSize: 20, fontWeight: '900', letterSpacing: 2, textAlign: 'center', textShadowColor: '#FF3B30', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }
 });
