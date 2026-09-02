@@ -47,6 +47,9 @@
         {
           "ios": {
             "deploymentTarget": "15.1"
+          },
+          "android": {
+            "kotlinVersion": "2.3.0"
           }
         }
       ]
