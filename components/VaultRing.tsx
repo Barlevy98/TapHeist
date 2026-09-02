@@ -26,6 +26,7 @@ export default function VaultRing({
   const displayColor = currentRewardTier?.color || '#00FFFF';
   const isBlack = currentRewardTier?.isBlack;
   
+  // תיקון צבעי המטרה - גם לבוסים וגם למיני-גיים
   let blockColor = '#00FF66';
   if (gameState === 'BOSS_BATTLE' && activeBoss) {
     const ringCol = (activeBoss.themeColor || '').toUpperCase();
@@ -35,7 +36,8 @@ export default function VaultRing({
     else if (ringCol === '#000000' || ringCol === 'BLACK') blockColor = '#FFFFFF'; 
     else blockColor = '#FFFFFF'; 
   } else if (isOverdrive) {
-    blockColor = '#FFD700'; 
+    // במיני-גיים הטבעת מזהב, אז נשתמש באדום כדי שייצור ניגודיות
+    blockColor = '#FF3B30'; 
   } else if (isDiamondTarget) {
     blockColor = displayColor;
   }
@@ -58,14 +60,19 @@ export default function VaultRing({
   return (
     <View style={[styles.vaultContainer, { width: CIRCLE_SIZE, height: CIRCLE_SIZE }]}>
       
+      {/* תצוגת הקומבו והמיני-גיים מופרדים כדי למנוע דחיפה למטה */}
       {(gameState === 'PLAYING' || gameState === 'BOSS_BATTLE') && combo > 0 && (
-        <Animated.View style={[styles.comboContainer, comboAnimatedStyle]}>
+        <>
           {isOverdrive && (
-            <Text style={styles.overdriveText}>⚡ MINI GAME ⚡{"\n"}More money for every HIT!</Text>
+            <View style={styles.overdriveContainer}>
+              <Text style={styles.overdriveText}>⚡ MINI GAME ⚡{"\n"}More money for every HIT!</Text>
+            </View>
           )}
-          <Text style={[styles.comboNumber, { color: activeSkin.color }]}>{combo}</Text>
-          <Text style={[styles.comboLabel, { color: activeSkin.color }]}>COMBO</Text>
-        </Animated.View>
+          <Animated.View style={[styles.comboContainer, comboAnimatedStyle]}>
+            <Text style={[styles.comboNumber, { color: activeSkin.color }]}>{combo}</Text>
+            <Text style={[styles.comboLabel, { color: activeSkin.color }]}>COMBO</Text>
+          </Animated.View>
+        </>
       )}
 
       <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE} style={styles.svg}>
@@ -148,6 +155,7 @@ const styles = StyleSheet.create({
   pointer: { borderTopLeftRadius: 5, borderTopRightRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1 },
   
   comboContainer: { position: 'absolute', top: -75, alignItems: 'center', width: '100%', zIndex: 5 },
+  overdriveContainer: { position: 'absolute', top: -130, alignItems: 'center', width: '100%', zIndex: 6 },
   overdriveText: { color: '#FFCC00', fontSize: 13, fontWeight: '900', textAlign: 'center', marginBottom: 6, letterSpacing: 1, textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
   comboNumber: { fontSize: 32, fontWeight: '900', letterSpacing: 1, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10, textShadowColor: '#000' },
   comboLabel: { fontSize: 10, fontWeight: 'bold', letterSpacing: 3, marginTop: -2, opacity: 0.8 },
