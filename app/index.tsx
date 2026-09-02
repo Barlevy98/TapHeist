@@ -797,7 +797,8 @@ export default function GameScreen() {
 
       const tier = getRewardTier(newCombo, activeWorld.id);
       const diamondGain = tier.gain;
-      const currentMultiplier = isOverdrive ? multiplier * 3 : multiplier;
+      // כאן התיקון שביקשת! מכפיל את הבסיס פי 6 בזמן המיני-גיים.
+      const currentMultiplier = isOverdrive ? multiplier * 6 : multiplier;
 
       if (isFirewallActive || gameState === 'BOSS_BATTLE') {
         if (!activeBoss) await hapticNotification(Haptics.NotificationFeedbackType.Success);
@@ -860,7 +861,6 @@ export default function GameScreen() {
       
       if (gameState !== 'BOSS_BATTLE') {
         if (isEndingOverdrive) {
-          // המיני-גיים נגמר בדיוק עכשיו, עוצרים את הרצף ושואלים Risk It!
           await enterRiskMode(); 
           return;
         } else if (newCombo > 0 && newCombo % 40 === 0) {
@@ -932,7 +932,8 @@ export default function GameScreen() {
           score={score}
           lastRewardEarned={lastRewardEarned}
           isDiamondTarget={isDiamondTarget}
-          multiplier={multiplier}
+          // כאן התיקון השני! מעביר את המכפיל המוגדל ישירות למסך למעלה כדי שתראה את זה קופץ
+          multiplier={isOverdrive ? multiplier * 6 : multiplier}
           floatingScoreStyle={floatingScoreStyle}
           isShieldActive={isShieldActive}
           shieldAnimStyle={shieldAnimStyle}
