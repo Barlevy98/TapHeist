@@ -120,7 +120,6 @@ export default function GameScreen() {
   const [gamesSinceFirewall, setGamesSinceFirewall] = useState(0);
   const [isFirewallActive, setIsFirewallActive] = useState(false);
   
-  // V2.0 System Overdrive State
   const [overdriveHitsLeft, setOverdriveHitsLeft] = useState(0);
 
   const [interstitialLoaded, setInterstitialLoaded] = useState(false);
@@ -133,7 +132,6 @@ export default function GameScreen() {
   const [diamondBonus, setDiamondBonus] = useState(0);
   const [startMultBonus, setStartMultBonus] = useState(1);
 
-  // V2.0 Boss Battle States
   const [activeBoss, setActiveBoss] = useState<Boss | null>(null);
   const [bossHitsLeft, setBossHitsLeft] = useState(0);
   const [pendingBoss, setPendingBoss] = useState<Boss | null>(null);
@@ -141,7 +139,6 @@ export default function GameScreen() {
   const expandedZoneSize = ZONE_SIZE * (1 + (zoneBonus / 100));
   const bossHealthProgress = activeBoss ? bossHitsLeft / activeBoss.targetHits : 1;
 
-  // V2.0: Shrinking hit zone based on Boss health
   let activeZoneSize = expandedZoneSize;
   if (isFirewallActive) activeZoneSize = Math.max(15, expandedZoneSize * 0.5);
   else if (focusTapsLeft > 0) activeZoneSize = expandedZoneSize * 2;
@@ -206,7 +203,6 @@ export default function GameScreen() {
     
     if (isFirewallActive) finalDuration *= 0.65; 
     
-    // V2.0 Boss Acceleration based on remaining health
     if (gameState === 'BOSS_BATTLE' && activeBoss) {
       const prog = bossHitsLeft / activeBoss.targetHits;
       finalDuration *= activeBoss.speedModifier * (0.6 + 0.4 * prog);
@@ -675,7 +671,6 @@ export default function GameScreen() {
   };
 
   const processGameOver = async () => {
-    // V2.0 Boss Economy Fix - 0 rewards on loss
     if (gameState === 'BOSS_BATTLE') {
       setConsolationPrize(0);
       closeInventory();
@@ -744,6 +739,8 @@ export default function GameScreen() {
     const isNearMiss = !isHit && angleDiff <= ((activeZoneSize / 2) + currentHitBuffer) * NEAR_MISS_MULTIPLIER;
 
     if (isHit) {
+      let isEndingOverdrive = false;
+
       if (focusTapsLeft > 0) {
         setFocusTapsLeft(prev => prev - 1); 
         if (focusTapsLeft - 1 === 0) { cancelAnimation(focusScale); focusScale.value = 1; }
@@ -751,6 +748,9 @@ export default function GameScreen() {
 
       if (overdriveHitsLeft > 0) {
         setOverdriveHitsLeft(prev => prev - 1);
+        if (overdriveHitsLeft - 1 === 0) {
+          isEndingOverdrive = true;
+        }
       }
 
       const newCombo = combo + 1;
@@ -763,7 +763,6 @@ export default function GameScreen() {
       
       flashHit();
 
-      // --- V2.0 BOSS BATTLE WIN CONDITION ---
       if (gameState === 'BOSS_BATTLE' && activeBoss) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         const remaining = bossHitsLeft - 1;
@@ -783,7 +782,6 @@ export default function GameScreen() {
           setRunDiamondsEarned(d => d + bonusDiamonds);
           playScoreAnimation(bonusCash);
           
-          // Mark boss as defeated to unlock the next one
           SecureStore.getItemAsync('vault_defeated_bosses').then((savedDefeated) => {
             const defeatedArr = savedDefeated ? JSON.parse(savedDefeated) : [];
             if (!defeatedArr.includes(activeBoss.id)) {
@@ -830,7 +828,6 @@ export default function GameScreen() {
         playScoreAnimation(reward);
       }
 
-      // Bonus drops during overdrive
       if (isOverdrive && gameState !== 'BOSS_BATTLE') {
         updateAndPersistDiamonds(1);
         setRunDiamondsEarned(d => d + 1);
@@ -839,9 +836,7 @@ export default function GameScreen() {
       let nextDirection = direction;
       let nextDuration = getSpeedDuration(newCombo);
 
-      // V2.0 Boss Mechanics (Removed random scrambles)
       if (gameState === 'BOSS_BATTLE' && activeBoss) {
-        // Change direction every 5 hits consistently
         if (newCombo % 5 === 0) {
           nextDirection = direction === 1 ? -1 : 1;
           setDirection(nextDirection);
@@ -864,12 +859,15 @@ export default function GameScreen() {
       const riskInterval = activeWorld.id === 'blood' ? 5 : 10;
       
       if (gameState !== 'BOSS_BATTLE') {
-        // V2.0 SYSTEM OVERDRIVE (Replaces Mini-game)
-        if (newCombo > 0 && newCombo % 40 === 0) {
+        if (isEndingOverdrive) {
+          // המיני-גיים נגמר בדיוק עכשיו, עוצרים את הרצף ושואלים Risk It!
+          await enterRiskMode(); 
+          return;
+        } else if (newCombo > 0 && newCombo % 40 === 0) {
           setOverdriveHitsLeft(10);
           showFirewallWarning('⚡ SYSTEM OVERDRIVE ⚡');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } else if (newCombo % riskInterval === 0 && activeWorld.id !== 'diamond_world') { 
+        } else if (!isOverdrive && newCombo % riskInterval === 0 && activeWorld.id !== 'diamond_world') { 
           if (activeWorld.id === 'cyber') {
             const newMult = multiplier * 2;
             setMultiplier(newMult);
